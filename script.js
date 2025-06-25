@@ -383,28 +383,49 @@ function renderReports(reports) {
             <div class="report-meta">
                 <div><strong>Versão:</strong> ${escapeHtml(report.versaoSistema || 'Não informada')}</div>
                 <div><strong>Prefeitura:</strong> ${escapeHtml(report.prefeitura)}</div>
-                <div><strong>Ambiente:</strong> ${escapeHtml(report.ambiente)}</
+                <div><strong>Ambiente:</strong> ${escapeHtml(report.ambiente)}</div>
+                <div><strong>Data:</strong> ${report.timestampBR}</div>
+                <div><strong>Criticidade:</strong> ${report.criticidade}/10</div>
+                ${report.githubUrl ? `<div><strong>GitHub:</strong> <a href="${report.githubUrl}" target="_blank">Ver Issue #${report.githubNumber}</a></div>` : ''}
+            </div>
+            <div class="report-content">
+                ${report.erros !== 'Nenhum erro reportado' ? `<div class="report-section"><strong>Erros:</strong> ${escapeHtml(report.erros)}</div>` : ''}
+                ${report.tarefas.length > 0 ? `
+                    <div class="report-section">
+                        <strong>Tarefas (${report.tarefas.length}):</strong>
+                        <ul>
+                            ${report.tarefas.map(tarefa => `<li>${escapeHtml(tarefa.texto)}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                ${report.avaliacaoQA !== 'Não informado' ? `<div class="report-section"><strong>Avaliação QA:</strong> ${escapeHtml(report.avaliacaoQA)}</div>` : ''}
+            </div>
+        </div>
+    `).join('');
+    
+    reportsContainer.innerHTML = html;
+}
+
+function updateExportButtons(hasReports) {
+    // Aguardar um pouco para garantir que os elementos estão no DOM
+    setTimeout(() => {
+        const excelBtn = document.getElementById('exportExcel');
+        const wordBtn = document.getElementById('exportWord');
         
-        if (excelBtn && wordBtn) {
-            // Só desabilita se não há relatórios
-            excelBtn.disabled = !hasReports;
-            wordBtn.disabled = !hasReports;
-            
-            if (!hasReports) {
-                excelBtn.title = 'Nenhum relatório disponível para exportar';
-                wordBtn.title = 'Nenhum relatório disponível para exportar';
+        if (!hasReports) {
+            excelBtn.title = 'Nenhum relatório disponível para exportar';
+            wordBtn.title = 'Nenhum relatório disponível para exportar';
+            excelBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
+            wordBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
+        } else {
+            excelBtn.title = 'Exportar todos os relatórios para Excel';
+            wordBtn.title = 'Exportar todos os relatórios para Word';
+            // Sempre mantém o texto padrão quando há relatórios (exceto durante processamento)
+            if (!excelBtn.innerHTML.includes('fa-spin')) {
                 excelBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
+            }
+            if (!wordBtn.innerHTML.includes('fa-spin')) {
                 wordBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
-            } else {
-                excelBtn.title = 'Exportar todos os relatórios para Excel';
-                wordBtn.title = 'Exportar todos os relatórios para Word';
-                // Sempre mantém o texto padrão quando há relatórios (exceto durante processamento)
-                if (!excelBtn.innerHTML.includes('fa-spin')) {
-                    excelBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
-                }
-                if (!wordBtn.innerHTML.includes('fa-spin')) {
-                    wordBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
-                }
             }
         }
     }, 100);
