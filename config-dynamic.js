@@ -4,7 +4,13 @@
 const DynamicConfig = {
     // Configuração padrão (modo local)
     getConfig() {
-        // Tentar carregar do localStorage primeiro
+        // 1. Tentar carregar da URL primeiro (link compartilhado)
+        const urlConfig = getConfigFromURL();
+        if (urlConfig) {
+            return urlConfig;
+        }
+        
+        // 2. Tentar carregar do localStorage 
         const savedConfig = localStorage.getItem('opsReport_config');
         
         if (savedConfig) {
@@ -112,3 +118,104 @@ window.showCurrentConfig = () => {
     console.log('Equipe:', CONFIG.TEAM_MEMBERS);
     console.log('Configurado:', DynamicConfig.isConfigured());
 };
+
+// === CONFIGURAÇÃO COMPARTILHADA VIA URL ===
+
+function getConfigFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const configParam = urlParams.get('config');
+    
+    if (configParam) {
+        try {
+            // Decodificar configuração da URL (Base64)
+            const decodedConfig = atob(configParam);
+            const config = JSON.parse(decodedConfig);
+            
+            console.log('📡 Configuração carregada via URL');
+            return {
+                GITHUB_TOKEN: config.token,
+                GITHUB_REPO: config.repo,
+                TEAM_MEMBERS: config.team || ['Equipe'],
+                APP_NAME: 'Sistema de Relatórios de Operações',
+                VERSION: '1.0.0',
+                EXPORT_CONFIG: {
+                    includeTeamInfo: true,
+                    includeTimestamp: true,
+                    maxTasksInSummary: 10
+                },
+                DEBUG_MODE: true
+            };
+        } catch (error) {
+            console.warn('Erro ao carregar configuração da URL:', error);
+        }
+    }
+    
+    return null;
+}
+
+// Gerar URL de compartilhamento
+function generateShareableURL(token, repo, team) {
+    const config = {
+        token: token,
+        repo: repo,
+        team: team
+    };
+    
+    const encodedConfig = btoa(JSON.stringify(config));
+    const currentURL = window.location.origin + window.location.pathname;
+    const shareURL = `${currentURL}?config=${encodedConfig}`;
+    
+    return shareURL;
+}
+
+// Adicionar botão para gerar link de compartilhamento
+function addShareButton() {
+    const configActions = document.querySelector('.modal-actions');
+    if (configActions && !document.getElementById('shareButton')) {
+        const shareBtn = document.createElement('button');
+        shareBtn.id = 'shareButton';
+        shareBtn.type = 'button';
+        shareBtn.className = 'btn';
+        shareBtn.style.backgroundColor = '#10b981';
+        shareBtn.innerHTML = '<i class="fas fa-share"></i> Gerar Link Equipe';
+        
+        shareBtn.addEventListener('click', generateTeamLink);
+        configActions.appendChild(shareBtn);
+    }
+}
+
+function generateTeamLink() {
+    const token = document.getElementById('githubToken').value.trim();
+    const repo = document.getElementById('githubRepo').value.trim();
+    const teamText = document.getElementById('teamMembers').value.trim();
+    const team = teamText.split(',').map(name => name.trim()).filter(name => name);
+    
+    if (!token || !repo) {
+        showConfigMessage('Preencha o token e repositório primeiro.', 'error');
+        return;
+    }
+    
+    const shareURL = generateShareableURL(token, repo, team);
+    
+    // Copiar para clipboard
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(shareURL).then(() => {
+            showConfigMessage('✅ Link copiado! Compartilhe com a equipe.', 'success');
+        }).catch(() => {
+            showShareURL(shareURL);
+        });
+    } else {
+        showShareURL(shareURL);
+    }
+}
+
+function showShareURL(url) {
+    const statusDiv = document.getElementById('configStatus');
+    statusDiv.innerHTML = `
+        <strong>Link para a equipe:</strong><br>
+        <textarea readonly style="width: 100%; height: 60px; margin: 10px 0; font-size: 12px;">${url}</textarea>
+        <br><small>Copie e compartilhe este link com a equipe</small>
+    `;
+    statusDiv.className = 'config-status success';
+    statusDiv.style.display = 'block';
+}

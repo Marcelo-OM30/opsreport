@@ -971,6 +971,11 @@ function loadCurrentConfig() {
         teamInput.value = CONFIG.TEAM_MEMBERS.join(', ');
     }
     
+    // Adicionar botão de compartilhamento se não existir
+    if (typeof addShareButton === 'function') {
+        addShareButton();
+    }
+    
     // Mostrar status atual
     showConfigStatus();
 }
