@@ -252,6 +252,24 @@
         </div>
     </div>
 
+    <!-- Configuração: tenta carregar config.js (local) ou config.public.js (GitHub Pages) -->
+    <script>
+        // Tentar carregar config.js primeiro (desenvolvimento/local)
+        const script1 = document.createElement('script');
+        script1.src = 'config.js';
+        script1.onerror = function() {
+            // Se config.js falhar, carregar config.public.js
+            console.log('📁 config.js não encontrado, carregando config.public.js');
+            const script2 = document.createElement('script');
+            script2.src = 'config.public.js';
+            script2.onerror = function() {
+                console.warn('⚠️ Nenhum arquivo de configuração encontrado');
+            };
+            document.head.appendChild(script2);
+        };
+        document.head.appendChild(script1);
+    </script>
+    
     <!-- Configuração Dinâmica (funciona sem config.js) -->
     <script src="config-dynamic.js"></script>
     <script src="script.js"></script>
