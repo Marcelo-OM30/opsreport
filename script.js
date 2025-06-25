@@ -1033,8 +1033,15 @@ function saveGitHubConfig() {
         return;
     }
     
-    if (teamsWebhook && !teamsWebhook.includes('outlook.office.com/webhook')) {
-        showConfigMessage('URL do Teams parece inválida. Deve ser um webhook do Outlook/Teams.', 'warning');
+    if (teamsWebhook && !teamsWebhook.startsWith('https://')) {
+        showConfigMessage('URL do Teams deve começar com https://', 'error');
+        return;
+    }
+    
+    if (teamsWebhook && !(teamsWebhook.includes('outlook.office.com/webhook') || 
+                         teamsWebhook.includes('logic.azure.com') || 
+                         teamsWebhook.includes('prod-'))) {
+        showConfigMessage('URL do Teams parece inválida. Deve ser um webhook do Teams/Power Automate.', 'warning');
     }
     
     // Salvar configuração
@@ -1387,30 +1394,81 @@ async function enviarParaTeams(relatorio, tipo = 'novo') {
     
     try {
         console.log('📢 Enviando relatório para Teams...');
+        console.log('📢 URL do webhook:', CONFIG.TEAMS_WEBHOOK_URL.substring(0, 50) + '...');
         
-        const card = criarCardTeams(relatorio, tipo);
+        const payload = criarPayloadTeams(relatorio, tipo);
+        console.log('📢 Payload criado:', JSON.stringify(payload, null, 2));
         
         const response = await fetch(CONFIG.TEAMS_WEBHOOK_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(card)
+            body: JSON.stringify(payload)
         });
+        
+        console.log('📢 Status da resposta:', response.status);
+        console.log('📢 Headers da resposta:', [...response.headers.entries()]);
         
         if (response.ok) {
             console.log('✅ Relatório enviado para Teams com sucesso');
             showToast('📢 Relatório enviado para Teams!', 'success');
             return true;
         } else {
-            console.error('❌ Erro ao enviar para Teams:', response.status);
-            showToast('❌ Erro ao enviar para Teams', 'error');
+            const errorText = await response.text();
+            console.error('❌ Erro ao enviar para Teams:', response.status, errorText);
+            showToast(`❌ Erro Teams: ${response.status}`, 'error');
             return false;
         }
     } catch (error) {
         console.error('❌ Erro na integração com Teams:', error);
-        showToast('❌ Erro na conexão com Teams', 'error');
+        showToast(`❌ Erro Teams: ${error.message}`, 'error');
         return false;
+    }
+}
+
+function criarPayloadTeams(relatorio, tipo) {
+    const dataFormatada = new Date(relatorio.timestamp).toLocaleString('pt-BR');
+    const criticidadeColor = getCriticidadeColor(relatorio.criticidade);
+    const criticidadeText = getCriticidadeText(relatorio.criticidade);
+    
+    let titulo = '🚀 Novo Relatório de Operação';
+    let subtitulo = `${relatorio.prefeitura} - ${relatorio.opsInfo}`;
+    
+    if (tipo === 'teste') {
+        titulo = '🧪 Teste de Integração Teams';
+        subtitulo = 'Verificando conexão do sistema';
+    } else if (tipo === 'resumo') {
+        titulo = '📊 Resumo de Operações';
+        subtitulo = 'Relatórios do período';
+    }
+    
+    // Detectar tipo de webhook
+    const webhookUrl = CONFIG.TEAMS_WEBHOOK_URL;
+    const isModernWebhook = webhookUrl.includes('logic.azure.com') || 
+                           webhookUrl.includes('prod-') ||
+                           webhookUrl.includes('powerautomate.com');
+    
+    if (isModernWebhook) {
+        // Formato para Power Automate/Logic Apps
+        return {
+            title: titulo,
+            text: `${titulo}\n\n` +
+                  `🏛️ **Prefeitura:** ${relatorio.prefeitura}\n` +
+                  `📋 **Operação:** ${relatorio.opsInfo}\n` +
+                  `🔧 **Versão:** ${relatorio.versaoSistema}\n` +
+                  `🌐 **Ambiente:** ${relatorio.ambiente}\n` +
+                  `⚠️ **Criticidade:** ${criticidadeText} (${relatorio.criticidade}/10)\n` +
+                  `👤 **Responsável:** ${relatorio.responsavel || 'Sistema'}\n` +
+                  `📅 **Data:** ${dataFormatada}\n\n` +
+                  (relatorio.tarefas && relatorio.tarefas.length > 0 ? 
+                   `📝 **Tarefas:**\n${relatorio.tarefas.slice(0, 3).map(t => `• ${t.texto}`).join('\n')}\n\n` : '') +
+                  `✅ **Conclusão:** ${relatorio.conclusao}\n\n` +
+                  `🔗 [Ver todos os relatórios](https://marcelo-om30.github.io/opsreport/)`
+        };
+    } else {
+        // Formato MessageCard para webhooks clássicos
+        return criarCardTeams(relatorio, tipo);
     }
 }
 
@@ -1427,6 +1485,28 @@ function criarCardTeams(relatorio, tipo) {
         subtitulo = `Relatórios do período`;
     }
     
+    // Formato para webhooks modernos (Power Automate/Logic Apps)
+    const isModernWebhook = CONFIG.TEAMS_WEBHOOK_URL && 
+                           (CONFIG.TEAMS_WEBHOOK_URL.includes('logic.azure.com') || 
+                            CONFIG.TEAMS_WEBHOOK_URL.includes('prod-'));
+    
+    if (isModernWebhook) {
+        // Formato simplificado para Power Automate
+        return {
+            text: `${titulo}\n\n` +
+                  `🏛️ **Prefeitura:** ${relatorio.prefeitura}\n` +
+                  `📋 **Operação:** ${relatorio.opsInfo}\n` +
+                  `🔧 **Versão:** ${relatorio.versaoSistema}\n` +
+                  `🌐 **Ambiente:** ${relatorio.ambiente}\n` +
+                  `⚠️ **Criticidade:** ${criticidadeText} (${relatorio.criticidade}/10)\n` +
+                  `👤 **Responsável:** ${relatorio.responsavel || 'Não informado'}\n` +
+                  `📅 **Data:** ${dataFormatada}\n\n` +
+                  `✅ **Conclusão:** ${relatorio.conclusao}\n\n` +
+                  `🔗 [Ver Todos os Relatórios](https://marcelo-om30.github.io/opsreport/)`
+        };
+    }
+    
+    // Formato MessageCard para webhooks clássicos
     const card = {
         "@type": "MessageCard",
         "@context": "http://schema.org/extensions",
@@ -1538,32 +1618,94 @@ function getCriticidadeText(criticidade) {
 }
 
 async function testarWebhookTeams() {
+    console.log('🧪 === TESTE DE WEBHOOK TEAMS ===');
+    
     if (!CONFIG.TEAMS_WEBHOOK_URL) {
+        showToast('Configure o webhook do Teams primeiro', 'warning');
+        console.log('❌ Webhook não configurado');
+        return;
+    }
+    
+    const webhookUrl = CONFIG.TEAMS_WEBHOOK_URL;
+    console.log('📢 URL configurada:', webhookUrl.substring(0, 50) + '...');
+    console.log('✅ Teams habilitado:', CONFIG.TEAMS_ENABLED);
+    
+    // Analisar tipo de webhook
+    console.log('🔍 Análise da URL:');
+    
+    if (webhookUrl.includes('logic.azure.com')) {
+        console.log('✅ Tipo: Power Automate (Logic Apps)');
+        console.log('💡 Formato: Texto simples será enviado');
+    } else if (webhookUrl.includes('prod-')) {
+        console.log('✅ Tipo: Fluxos de Trabalho do Teams');
+        console.log('💡 Formato: Texto simples será enviado');
+    } else if (webhookUrl.includes('outlook.office.com/webhook')) {
+        console.log('✅ Tipo: Webhook clássico do Teams');
+        console.log('💡 Formato: MessageCard será enviado');
+    } else {
+        console.log('⚠️ Tipo: Não identificado automaticamente');
+        console.log('💡 Tentaremos formato moderno primeiro');
+    }
+    
+    // Teste simples de conectividade
+    console.log('🌐 Testando conectividade...');
+    
+    try {
+        const testPayload = {
+            text: '🧪 Teste de conectividade do Sistema de Relatórios OM30'
+        };
+        
+        const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(testPayload)
+        });
+        
+        console.log('📊 Status:', response.status);
+        console.log('📊 Status Text:', response.statusText);
+        console.log('📊 Headers:', [...response.headers.entries()]);
+        
+        if (response.ok) {
+            console.log('✅ Conectividade OK');
+            showToast('✅ Webhook acessível! Verifique se a mensagem chegou no Teams.', 'success');
+        } else {
+            const errorText = await response.text();
+            console.log('❌ Erro HTTP:', errorText);
+            showToast(`❌ Erro ${response.status}: ${response.statusText}`, 'error');
+            
+            // Dicas baseadas no status code
+            if (response.status === 400) {
+                console.log('💡 Erro 400: Payload pode estar em formato incorreto');
+            } else if (response.status === 401) {
+                console.log('💡 Erro 401: Webhook pode ter expirado ou ser inválido');
+            } else if (response.status === 404) {
+                console.log('💡 Erro 404: URL do webhook não existe mais');
+            }
+        }
+        
+    } catch (error) {
+        console.log('❌ Erro de rede:', error);
+        showToast(`❌ Erro de rede: ${error.message}`, 'error');
+        
+        // Verificações adicionais
+        if (error.message.includes('CORS')) {
+            console.log('💡 Erro CORS: Normal para algumas URLs de webhook');
+        } else if (error.message.includes('fetch')) {
+            console.log('💡 Erro de fetch: Verifique se a URL está completa');
+        }
+    }
+    
+    console.log('🧪 === FIM DO TESTE ===');
+}
+
+async function diagnosticoTeams() {
+    console.log('🔍 === DIAGNÓSTICO TEAMS ===');
+    
+    if (!CONFIG.TEAMS_WEBHOOK_URL) {
+        console.log('❌ Webhook não configurado');
         showToast('Configure o webhook do Teams primeiro', 'warning');
         return;
     }
     
-    const relatorioTeste = {
-        id: Date.now(),
-        prefeitura: 'Teste',
-        opsInfo: 'Teste de Integração Teams',
-        versaoSistema: 'v1.0.0-test',
-        ambiente: 'Homologação',
-        criticidade: 5,
-        responsavel: 'Sistema Automático',
-        timestamp: Date.now(),
-        tarefas: [
-            { id: 1, texto: 'Teste de envio para Teams' },
-            { id: 2, texto: 'Verificar formatação do card' }
-        ],
-        conclusao: 'Este é um teste da integração com Microsoft Teams. Se você está vendo esta mensagem, a integração está funcionando!'
-    };
-    
-    const sucesso = await enviarParaTeams(relatorioTeste, 'teste');
-    
-    if (sucesso) {
-        showToast('✅ Teste enviado para Teams!', 'success');
-    } else {
-        showToast('❌ Falha no teste do Teams', 'error');
-    }
-}

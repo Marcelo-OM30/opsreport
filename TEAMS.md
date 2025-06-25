@@ -4,22 +4,44 @@
 
 ### 1. Configurar Webhook no Teams
 
+**Método 1: Via Fluxos de Trabalho (Recomendado)**
+
 1. **Abra o Microsoft Teams** e vá para o canal onde deseja receber os relatórios
 
 2. **Clique nos 3 pontos (⋯)** ao lado do nome do canal
 
-3. **Selecione "Conectores"**
+3. **Selecione "Fluxos de trabalho"**
 
-4. **Procure por "Webhook de Entrada"** e clique em "Adicionar"
+4. **Procure por "Postar para um canal quando um webhook receber uma solicitação"**
 
-5. **Configure o webhook:**
-   - Nome: "Sistema de Relatórios OM30"
-   - Descrição: "Recebe relatórios de operações automaticamente"
-   - Imagem: (opcional) use um ícone de relatório
+5. **Clique em "Adicionar fluxo de trabalho"**
 
-6. **Clique em "Criar"**
+6. **Configure:**
+   - Nome do fluxo: "Relatórios OM30"
+   - Selecione a equipe e canal corretos
+   - Clique em "Adicionar fluxo de trabalho"
 
-7. **Copie a URL gerada** (será algo como: `https://outlook.office.com/webhook/...`)
+7. **Copie a URL gerada** (será algo como: `https://prod-XX.westus.logic.azure.com:443/workflows/...`)
+
+**Método 2: Via Power Automate (Alternativo)**
+
+1. **Acesse** [https://make.powerautomate.com](https://make.powerautomate.com)
+
+2. **Crie um novo fluxo** → "Fluxo de nuvem instantâneo"
+
+3. **Nome:** "Webhook Relatórios Teams"
+
+4. **Gatilho:** "Quando uma solicitação HTTP é recebida"
+
+5. **Adicione ação:** "Postar mensagem em um chat ou canal" (Teams)
+
+6. **Configure:**
+   - Tipo: Canal
+   - Equipe: Sua equipe
+   - Canal: Canal desejado
+   - Mensagem: Use conteúdo dinâmico do corpo da solicitação
+
+7. **Salve** e copie a **URL do gatilho HTTP**
 
 ### 2. Configurar no Sistema
 
@@ -82,18 +104,30 @@ Cada card terá botões para:
 
 ### 7. Solução de Problemas
 
+**"Não encontro a opção Conectores":**
+- ✅ Use "Fluxos de trabalho" ou Power Automate (métodos atualizados)
+- ✅ A Microsoft descontinuou conectores clássicos em muitas versões
+
 **Erro ao enviar para Teams:**
 - ✅ Verifique se a URL do webhook está correta
-- ✅ Teste a URL diretamente copiando e colando
-- ✅ Certifique-se de que o conector não foi removido do canal
+- ✅ Para Power Automate: URL deve conter `logic.azure.com`
+- ✅ Para Fluxos de trabalho: URL deve conter `prod-`
+- ✅ Teste a URL diretamente com o botão "Testar Teams"
 
-**Card não aparece formatado:**
-- ✅ Teams pode demorar alguns segundos para renderizar
-- ✅ Verifique se o webhook suporta cards adaptáticos
+**Card não aparece ou aparece como texto simples:**
+- ✅ Webhooks modernos (Power Automate) mostram texto formatado
+- ✅ Webhooks clássicos mostram cards visuais
+- ✅ Ambos são funcionais, apenas diferem na apresentação
 
 **Não está enviando automaticamente:**
 - ✅ Confirme que `TEAMS_ENABLED: true`
 - ✅ Verifique se `sendOnCreate: true` no TEAMS_CONFIG
+- ✅ Teste criando um relatório de teste primeiro
+
+**Power Automate não está funcionando:**
+- ✅ Verifique se o fluxo está "Ativado"
+- ✅ Confira se o canal correto foi selecionado
+- ✅ Teste enviando um POST manual para a URL
 
 ### 8. Segurança
 
