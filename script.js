@@ -21,6 +21,20 @@ const exportWordBtn = document.getElementById('exportWord');
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', function() {
+    // Verificar se a configuração foi carregada
+    if (typeof GITHUB_CONFIG === 'undefined') {
+        console.error('ERRO: config.js não foi carregado ou GITHUB_CONFIG não está definido');
+        showToast('Erro de configuração. Verifique o arquivo config.js', 'error');
+        return;
+    }
+    
+    console.log('Configuração carregada:', {
+        owner: GITHUB_CONFIG.owner,
+        repo: GITHUB_CONFIG.repo,
+        hasToken: !!GITHUB_CONFIG.token,
+        tokenLength: GITHUB_CONFIG.token ? GITHUB_CONFIG.token.length : 0
+    });
+    
     initializeApp();
 });
 
@@ -190,20 +204,37 @@ async function handleFormSubmit(e) {
         
     } catch (error) {
         console.error('Erro ao salvar relatório:', error);
-        showToast('Erro ao salvar relatório. Tente novamente.', 'error');
+        
+        // Verificar se salvou localmente pelo menos
+        const relatoriosLocais = JSON.parse(localStorage.getItem('opsReports') || '[]');
+        const salvouLocal = relatoriosLocais.some(r => r.id === relatorio.id);
+        
+        if (salvouLocal) {
+            showToast('Relatório salvo localmente (erro no GitHub)', 'warning');
+            // Limpar formulário mesmo com erro no GitHub
+            limparFormulario();
+            loadReports();
+        } else {
+            showToast('Erro ao salvar relatório. Tente novamente.', 'error');
+        }
     }
 }
 
 async function salvarRelatorio(relatorio) {
+    console.log('Tentando salvar relatório...', relatorio);
+    console.log('Token configurado:', GITHUB_CONFIG.token ? 'Sim' : 'Não');
+    
     // Se não tiver token configurado, salvar localmente
     if (!GITHUB_CONFIG.token || 
         GITHUB_CONFIG.token === 'SEU_TOKEN_GITHUB' || 
         GITHUB_CONFIG.token === 'SUBSTITUA_PELO_SEU_TOKEN') {
+        console.log('Salvando apenas localmente - token não configurado');
         salvarRelatorioLocal(relatorio);
         return;
     }
     
     try {
+        console.log('Tentando salvar no GitHub...');
         // Criar issue no GitHub
         const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/issues`, {
             method: 'POST',
@@ -224,11 +255,16 @@ async function salvarRelatorio(relatorio) {
             })
         });
         
+        console.log('Response status:', response.status);
+        
         if (!response.ok) {
-            throw new Error(`Erro HTTP: ${response.status}`);
+            const errorText = await response.text();
+            console.error('Erro na resposta:', response.status, errorText);
+            throw new Error(`Erro HTTP: ${response.status} - ${errorText}`);
         }
         
         const result = await response.json();
+        console.log('Issue criada com sucesso:', result.html_url);
         relatorio.githubUrl = result.html_url;
         
         // Também salvar localmente como backup
@@ -238,6 +274,7 @@ async function salvarRelatorio(relatorio) {
         console.error('Erro ao salvar no GitHub:', error);
         // Fallback para salvamento local
         salvarRelatorioLocal(relatorio);
+        throw error; // Re-throw para mostrar o erro na UI
     }
 }
 
@@ -346,21 +383,7 @@ function renderReports(reports) {
             <div class="report-meta">
                 <div><strong>Versão:</strong> ${escapeHtml(report.versaoSistema || 'Não informada')}</div>
                 <div><strong>Prefeitura:</strong> ${escapeHtml(report.prefeitura)}</div>
-                <div><strong>Ambiente:</strong> ${escapeHtml(report.ambiente)}</div>
-            ${report.erros && report.erros !== 'Nenhum erro reportado' ? 
-                `<div style="margin-top: 15px;"><strong>Erros:</strong><br><small>${escapeHtml(report.erros.substring(0, 100))}${report.erros.length > 100 ? '...' : ''}</small></div>` : 
-                ''}
-        </div>
-    `).join('');
-    
-    reportsContainer.innerHTML = html;
-}
-
-function updateExportButtons(hasReports) {
-    // Aguardar um pouco para garantir que os elementos estão no DOM
-    setTimeout(() => {
-        const excelBtn = document.getElementById('exportExcel');
-        const wordBtn = document.getElementById('exportWord');
+                <div><strong>Ambiente:</strong> ${escapeHtml(report.ambiente)}</
         
         if (excelBtn && wordBtn) {
             // Só desabilita se não há relatórios
