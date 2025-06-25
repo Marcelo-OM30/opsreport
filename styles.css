@@ -520,29 +520,49 @@ body {
     font-weight: 500;
     transform: translateX(400px);
     transition: transform 0.3s ease-in-out;
-    z-index: 1000;
+    z-index: 9999; /* Maior que modal para aparecer por cima */
     display: flex;
     align-items: center;
     gap: 10px;
     box-shadow: var(--shadow-lg);
     max-width: 350px;
     word-wrap: break-word;
+    font-size: 14px;
+    line-height: 1.4;
 }
 
-.toast.show {
-    transform: translateX(0);
+/* === TOAST DEBUG E VISIBILIDADE FORÇADA === */
+.toast {
+    /* Forçar visibilidade */
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    
+    /* Posicionamento absoluto seguro */
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    
+    /* Z-index muito alto */
+    z-index: 999999 !important;
+    
+    /* Tamanho e espaçamento */
+    min-width: 200px;
+    max-width: 400px;
+    
+    /* Borda para debug visual */
+    border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
-.toast.success {
-    background: var(--success-color);
+/* Toast em modo debug - cor chamativa */
+body[debug] .toast {
+    border: 3px solid #ff0000;
+    background: #ff0000 !important;
 }
 
-.toast.error {
-    background: var(--danger-color);
-}
-
-.toast.warning {
-    background: var(--warning-color);
+/* Garantir que modal não cubra toast */
+.modal {
+    z-index: 9998 !important;
 }
 
 /* Modal de Configuração */

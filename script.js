@@ -720,7 +720,18 @@ async function exportarWord() {
 }
 
 function showToast(message, type = 'success') {
-    const toast = document.getElementById('toast');
+    console.log('🍞 Mostrando toast:', message, 'Tipo:', type);
+    
+    let toast = document.getElementById('toast');
+    
+    // Se não existir, criar o toast
+    if (!toast) {
+        console.log('🍞 Criando elemento toast');
+        toast = document.createElement('div');
+        toast.id = 'toast';
+        toast.className = 'toast';
+        document.body.appendChild(toast);
+    }
     
     // Limpar timers anteriores
     if (toast.hideTimer) {
@@ -742,24 +753,38 @@ function showToast(message, type = 'success') {
         case 'warning':
             icon = '<i class="fas fa-exclamation-triangle"></i>';
             break;
+        case 'info':
+            icon = '<i class="fas fa-info-circle"></i>';
+            break;
         default:
             icon = '<i class="fas fa-info-circle"></i>';
     }
     
     toast.innerHTML = `${icon} ${message}`;
-    toast.classList.add(type, 'show');
+    toast.classList.add(type);
     
-    // Remover após 4 segundos com referência para poder cancelar
+    // Forçar exibição
+    toast.style.display = 'flex';
+    toast.style.visibility = 'visible';
+    toast.style.opacity = '1';
+    
+    // Adicionar classe show com delay para animação
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+    
+    console.log('🍞 Toast configurado:', {
+        classes: toast.className,
+        style: toast.style.cssText,
+        position: toast.getBoundingClientRect()
+    });
+    
+    // Remover após 5 segundos (aumentei para dar tempo de ver)
     toast.hideTimer = setTimeout(() => {
+        console.log('🍞 Escondendo toast');
         toast.classList.remove('show');
         toast.hideTimer = null;
-    }, 4000);
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    }, 5000);
 }
 
 // Função para limpar dados antigos (executar ocasionalmente)
@@ -1604,6 +1629,12 @@ async function testarWebhookTeams() {
             console.log('✅ Resposta HTTP OK - Teams deve ter recebido');
             showToast('✅ Teste enviado! Verifique o canal do Teams', 'success');
             
+            // Agora testar com card completo
+            setTimeout(async () => {
+                await testarCardCompleto();
+            }, 2000);
+            
+        } else {
             // Agora testar com card completo
             setTimeout(async () => {
                 await testarCardCompleto();
