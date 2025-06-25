@@ -329,11 +329,9 @@ function renderReports(reports) {
 
 function updateExportButtons(hasReports) {
     if (exportExcelBtn && exportWordBtn) {
-        // Só desabilita se não há relatórios, não após exportação
-        const shouldDisable = !hasReports;
-        
-        exportExcelBtn.disabled = shouldDisable;
-        exportWordBtn.disabled = shouldDisable;
+        // Só desabilita se não há relatórios
+        exportExcelBtn.disabled = !hasReports;
+        exportWordBtn.disabled = !hasReports;
         
         if (!hasReports) {
             exportExcelBtn.title = 'Nenhum relatório disponível para exportar';
@@ -343,7 +341,7 @@ function updateExportButtons(hasReports) {
         } else {
             exportExcelBtn.title = 'Exportar todos os relatórios para Excel';
             exportWordBtn.title = 'Exportar todos os relatórios para Word';
-            // Só reseta o texto se não estiver processando
+            // Sempre mantém o texto padrão quando há relatórios (exceto durante processamento)
             if (!exportExcelBtn.innerHTML.includes('fa-spin')) {
                 exportExcelBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
             }
@@ -367,6 +365,11 @@ function exportarExcel() {
         
         if (relatorios.length === 0) {
             showToast('Nenhum relatório encontrado para exportar.', 'warning');
+            // Restaurar botão imediatamente se não há relatórios
+            setTimeout(() => {
+                exportBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
+                exportBtn.disabled = true;
+            }, 100);
             return;
         }
         
@@ -417,8 +420,11 @@ function exportarExcel() {
     } finally {
         // Restaurar botão após um pequeno delay
         setTimeout(() => {
+            const relatorios = JSON.parse(localStorage.getItem('opsReports') || '[]');
+            const hasReports = relatorios.length > 0;
+            
             exportBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
-            exportBtn.disabled = false;
+            exportBtn.disabled = !hasReports; // Só desabilita se não há relatórios
         }, 500);
     }
 }
@@ -435,6 +441,11 @@ function exportarWord() {
         
         if (relatorios.length === 0) {
             showToast('Nenhum relatório encontrado para exportar.', 'warning');
+            // Restaurar botão imediatamente se não há relatórios
+            setTimeout(() => {
+                exportBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
+                exportBtn.disabled = true;
+            }, 100);
             return;
         }
         
@@ -557,8 +568,11 @@ function exportarWord() {
     } finally {
         // Restaurar botão após um pequeno delay
         setTimeout(() => {
+            const relatorios = JSON.parse(localStorage.getItem('opsReports') || '[]');
+            const hasReports = relatorios.length > 0;
+            
             exportBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
-            exportBtn.disabled = false;
+            exportBtn.disabled = !hasReports; // Só desabilita se não há relatórios
         }, 500);
     }
 }
