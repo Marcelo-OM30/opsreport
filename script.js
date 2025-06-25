@@ -19,6 +19,12 @@ const loadingReports = document.getElementById('loadingReports');
 const exportExcelBtn = document.getElementById('exportExcel');
 const exportWordBtn = document.getElementById('exportWord');
 
+// Debug: Verificar se elementos foram encontrados
+console.log('🔍 Verificação de elementos DOM:');
+console.log('- novaTarefaInput:', !!novaTarefaInput);
+console.log('- adicionarTarefaBtn:', !!adicionarTarefaBtn);
+console.log('- tarefasLista:', !!tarefasLista);
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', function() {
     // Aguardar um pouco para garantir que config.js foi carregado
@@ -68,25 +74,51 @@ function initializeApp() {
 }
 
 function setupEventListeners() {
+    console.log('🔧 Configurando event listeners...');
+    
     // Slider de criticidade
-    criticidadeSlider.addEventListener('input', updateCriticidadeDisplay);
+    if (criticidadeSlider) {
+        criticidadeSlider.addEventListener('input', updateCriticidadeDisplay);
+        console.log('✅ Event listener do slider configurado');
+    }
     
     // Botão adicionar tarefa
-    adicionarTarefaBtn.addEventListener('click', adicionarTarefa);
-    
-    // Enter na input de tarefa
-    novaTarefaInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
+    if (adicionarTarefaBtn) {
+        adicionarTarefaBtn.addEventListener('click', function(e) {
+            console.log('🖱️ Botão adicionar tarefa clicado');
             e.preventDefault();
             adicionarTarefa();
-        }
-    });
+        });
+        console.log('✅ Event listener do botão adicionar configurado');
+    } else {
+        console.error('❌ Botão adicionarTarefa não encontrado!');
+    }
+    
+    // Enter na input de tarefa
+    if (novaTarefaInput) {
+        novaTarefaInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                console.log('⌨️ Enter pressionado no campo de tarefa');
+                e.preventDefault();
+                adicionarTarefa();
+            }
+        });
+        console.log('✅ Event listener do Enter configurado');
+    } else {
+        console.error('❌ Input novaTarefa não encontrado!');
+    }
     
     // Botão limpar formulário
-    limparFormBtn.addEventListener('click', limparFormulario);
+    if (limparFormBtn) {
+        limparFormBtn.addEventListener('click', limparFormulario);
+        console.log('✅ Event listener do limpar configurado');
+    }
     
     // Submit do formulário
-    form.addEventListener('submit', handleFormSubmit);
+    if (form) {
+        form.addEventListener('submit', handleFormSubmit);
+        console.log('✅ Event listener do form configurado');
+    }
     
     // Botões de exportação
     exportExcelBtn.addEventListener('click', exportarExcel);
@@ -131,9 +163,21 @@ function updateCriticidadeDisplay() {
 }
 
 function adicionarTarefa() {
+    console.log('🔄 Função adicionarTarefa chamada');
+    console.log('- Input element:', novaTarefaInput);
+    console.log('- Input value:', novaTarefaInput?.value);
+    
+    if (!novaTarefaInput) {
+        console.error('❌ Elemento novaTarefaInput não encontrado!');
+        showToast('Erro: Campo de tarefa não encontrado', 'error');
+        return;
+    }
+    
     const texto = novaTarefaInput.value.trim();
+    console.log('- Texto trimmed:', texto);
     
     if (!texto) {
+        console.log('⚠️ Texto vazio');
         showToast('Por favor, digite uma tarefa.', 'warning');
         return;
     }
@@ -144,10 +188,16 @@ function adicionarTarefa() {
         timestamp: new Date().toLocaleString('pt-BR')
     };
     
+    console.log('✅ Tarefa criada:', tarefa);
+    
     tarefas.push(tarefa);
+    console.log('📋 Total de tarefas:', tarefas.length);
+    
     renderTarefas();
     novaTarefaInput.value = '';
     novaTarefaInput.focus();
+    
+    showToast('Tarefa adicionada com sucesso!', 'success');
 }
 
 function removerTarefa(id) {
@@ -720,18 +770,7 @@ async function exportarWord() {
 }
 
 function showToast(message, type = 'success') {
-    console.log('🍞 Mostrando toast:', message, 'Tipo:', type);
-    
-    let toast = document.getElementById('toast');
-    
-    // Se não existir, criar o toast
-    if (!toast) {
-        console.log('🍞 Criando elemento toast');
-        toast = document.createElement('div');
-        toast.id = 'toast';
-        toast.className = 'toast';
-        document.body.appendChild(toast);
-    }
+    const toast = document.getElementById('toast');
     
     // Limpar timers anteriores
     if (toast.hideTimer) {
@@ -753,38 +792,24 @@ function showToast(message, type = 'success') {
         case 'warning':
             icon = '<i class="fas fa-exclamation-triangle"></i>';
             break;
-        case 'info':
-            icon = '<i class="fas fa-info-circle"></i>';
-            break;
         default:
             icon = '<i class="fas fa-info-circle"></i>';
     }
     
     toast.innerHTML = `${icon} ${message}`;
-    toast.classList.add(type);
+    toast.classList.add(type, 'show');
     
-    // Forçar exibição
-    toast.style.display = 'flex';
-    toast.style.visibility = 'visible';
-    toast.style.opacity = '1';
-    
-    // Adicionar classe show com delay para animação
-    setTimeout(() => {
-        toast.classList.add('show');
-    }, 10);
-    
-    console.log('🍞 Toast configurado:', {
-        classes: toast.className,
-        style: toast.style.cssText,
-        position: toast.getBoundingClientRect()
-    });
-    
-    // Remover após 5 segundos (aumentei para dar tempo de ver)
+    // Remover após 4 segundos com referência para poder cancelar
     toast.hideTimer = setTimeout(() => {
-        console.log('🍞 Escondendo toast');
         toast.classList.remove('show');
         toast.hideTimer = null;
-    }, 5000);
+    }, 4000);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Função para limpar dados antigos (executar ocasionalmente)
@@ -1629,12 +1654,6 @@ async function testarWebhookTeams() {
             console.log('✅ Resposta HTTP OK - Teams deve ter recebido');
             showToast('✅ Teste enviado! Verifique o canal do Teams', 'success');
             
-            // Agora testar com card completo
-            setTimeout(async () => {
-                await testarCardCompleto();
-            }, 2000);
-            
-        } else {
             // Agora testar com card completo
             setTimeout(async () => {
                 await testarCardCompleto();
