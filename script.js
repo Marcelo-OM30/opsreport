@@ -19,12 +19,6 @@ const loadingReports = document.getElementById('loadingReports');
 const exportExcelBtn = document.getElementById('exportExcel');
 const exportWordBtn = document.getElementById('exportWord');
 
-// Debug: Verificar se elementos foram encontrados
-console.log('🔍 Verificação de elementos DOM:');
-console.log('- novaTarefaInput:', !!novaTarefaInput);
-console.log('- adicionarTarefaBtn:', !!adicionarTarefaBtn);
-console.log('- tarefasLista:', !!tarefasLista);
-
 // Inicialização
 document.addEventListener('DOMContentLoaded', function() {
     // Aguardar um pouco para garantir que config.js foi carregado
@@ -74,51 +68,25 @@ function initializeApp() {
 }
 
 function setupEventListeners() {
-    console.log('🔧 Configurando event listeners...');
-    
     // Slider de criticidade
-    if (criticidadeSlider) {
-        criticidadeSlider.addEventListener('input', updateCriticidadeDisplay);
-        console.log('✅ Event listener do slider configurado');
-    }
+    criticidadeSlider.addEventListener('input', updateCriticidadeDisplay);
     
     // Botão adicionar tarefa
-    if (adicionarTarefaBtn) {
-        adicionarTarefaBtn.addEventListener('click', function(e) {
-            console.log('🖱️ Botão adicionar tarefa clicado');
-            e.preventDefault();
-            adicionarTarefa();
-        });
-        console.log('✅ Event listener do botão adicionar configurado');
-    } else {
-        console.error('❌ Botão adicionarTarefa não encontrado!');
-    }
+    adicionarTarefaBtn.addEventListener('click', adicionarTarefa);
     
     // Enter na input de tarefa
-    if (novaTarefaInput) {
-        novaTarefaInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                console.log('⌨️ Enter pressionado no campo de tarefa');
-                e.preventDefault();
-                adicionarTarefa();
-            }
-        });
-        console.log('✅ Event listener do Enter configurado');
-    } else {
-        console.error('❌ Input novaTarefa não encontrado!');
-    }
+    novaTarefaInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            adicionarTarefa();
+        }
+    });
     
     // Botão limpar formulário
-    if (limparFormBtn) {
-        limparFormBtn.addEventListener('click', limparFormulario);
-        console.log('✅ Event listener do limpar configurado');
-    }
+    limparFormBtn.addEventListener('click', limparFormulario);
     
     // Submit do formulário
-    if (form) {
-        form.addEventListener('submit', handleFormSubmit);
-        console.log('✅ Event listener do form configurado');
-    }
+    form.addEventListener('submit', handleFormSubmit);
     
     // Botões de exportação
     exportExcelBtn.addEventListener('click', exportarExcel);
@@ -163,21 +131,9 @@ function updateCriticidadeDisplay() {
 }
 
 function adicionarTarefa() {
-    console.log('🔄 Função adicionarTarefa chamada');
-    console.log('- Input element:', novaTarefaInput);
-    console.log('- Input value:', novaTarefaInput?.value);
-    
-    if (!novaTarefaInput) {
-        console.error('❌ Elemento novaTarefaInput não encontrado!');
-        showToast('Erro: Campo de tarefa não encontrado', 'error');
-        return;
-    }
-    
     const texto = novaTarefaInput.value.trim();
-    console.log('- Texto trimmed:', texto);
     
     if (!texto) {
-        console.log('⚠️ Texto vazio');
         showToast('Por favor, digite uma tarefa.', 'warning');
         return;
     }
@@ -188,16 +144,10 @@ function adicionarTarefa() {
         timestamp: new Date().toLocaleString('pt-BR')
     };
     
-    console.log('✅ Tarefa criada:', tarefa);
-    
     tarefas.push(tarefa);
-    console.log('📋 Total de tarefas:', tarefas.length);
-    
     renderTarefas();
     novaTarefaInput.value = '';
     novaTarefaInput.focus();
-    
-    showToast('Tarefa adicionada com sucesso!', 'success');
 }
 
 function removerTarefa(id) {
@@ -300,6 +250,17 @@ async function salvarRelatorio(relatorio) {
         CONFIG.GITHUB_TOKEN === 'SEU_NOVO_TOKEN_AQUI') {
         console.log('Salvando apenas localmente - token não configurado');
         salvarRelatorioLocal(relatorio);
+        
+        // 🎯 ENVIAR PARA TEAMS MESMO SEM GITHUB
+        if (CONFIG.TEAMS_ENABLED && CONFIG.TEAMS_CONFIG.sendOnCreate) {
+            try {
+                console.log('Enviando para Teams (modo local)...');
+                await enviarParaTeams(relatorio, 'novo');
+            } catch (teamsError) {
+                console.warn('Erro ao enviar para Teams:', teamsError);
+            }
+        }
+        
         return;
     }
     
@@ -1437,13 +1398,21 @@ O token funcionará nesta sessão, mas será perdido ao recarregar a página se 
 
 // === INTEGRAÇÃO COM MICROSOFT TEAMS ===
 async function enviarParaTeams(relatorio, tipo = 'novo') {
+    console.log('🔍 === TENTATIVA DE ENVIO PARA TEAMS ===');
+    console.log('TEAMS_ENABLED:', CONFIG.TEAMS_ENABLED);
+    console.log('TEAMS_WEBHOOK_URL:', CONFIG.TEAMS_WEBHOOK_URL ? 'Configurado' : 'Não configurado');
+    console.log('sendOnCreate:', CONFIG.TEAMS_CONFIG?.sendOnCreate);
+    
     if (!CONFIG.TEAMS_ENABLED || !CONFIG.TEAMS_WEBHOOK_URL) {
         console.log('📢 Teams não configurado ou desabilitado');
+        console.log('- TEAMS_ENABLED:', CONFIG.TEAMS_ENABLED);
+        console.log('- TEAMS_WEBHOOK_URL:', !!CONFIG.TEAMS_WEBHOOK_URL);
         return false;
     }
     
     try {
         console.log('📢 Enviando relatório para Teams...');
+        console.log('Relatório:', relatorio.prefeitura, '-', relatorio.opsInfo);
         
         const card = criarCardTeams(relatorio, tipo);
         
