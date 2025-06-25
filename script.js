@@ -21,38 +21,58 @@ const exportWordBtn = document.getElementById('exportWord');
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', function() {
-    // Aguardar um pouco para garantir que config.js foi carregado
-    setTimeout(() => {
-        // Verificar se a configuração foi carregada
-        if (typeof CONFIG === 'undefined') {
-            console.warn('⚠️ config.js não foi carregado. Sistema funcionará em modo local apenas.');
-            
-            // Criar configuração padrão para modo local
-            window.CONFIG = {
-                GITHUB_TOKEN: null,
-                GITHUB_REPO: null,
-                DEBUG_MODE: true,
-                TEAM_MEMBERS: ['Local User']
-            };
-            
-            // Criar GITHUB_CONFIG para compatibilidade
-            window.GITHUB_CONFIG = {
-                owner: '',
-                repo: '',
-                token: null
-            };
-            
-            showToast('⚠️ Sistema funcionando em modo local (config.js não encontrado)', 'warning');
+    // Aguardar a configuração ser carregada
+    waitForConfig().then(() => {
+        console.log('✅ Configuração carregada:', {
+            hasToken: !!window.CONFIG.GITHUB_TOKEN,
+            repo: window.CONFIG.GITHUB_REPO,
+            tokenLength: window.CONFIG.GITHUB_TOKEN ? window.CONFIG.GITHUB_TOKEN.length : 0,
+            teamsEnabled: window.CONFIG.TEAMS_ENABLED,
+            teamsWebhook: !!window.CONFIG.TEAMS_WEBHOOK_URL,
+            teamsSendOnCreate: window.CONFIG.TEAMS_CONFIG?.sendOnCreate
+        });
+        
+        // 🔍 DEBUG ESPECÍFICO DO TEAMS
+        if (window.CONFIG.TEAMS_ENABLED) {
+            console.log('📢 Teams está HABILITADO');
+            if (window.CONFIG.TEAMS_WEBHOOK_URL) {
+                console.log('📢 Webhook configurado:', window.CONFIG.TEAMS_WEBHOOK_URL.substring(0, 50) + '...');
+            } else {
+                console.log('❌ Webhook não configurado');
+            }
         } else {
-            console.log('✅ Configuração carregada:', {
-                hasToken: !!CONFIG.GITHUB_TOKEN,
-                repo: CONFIG.GITHUB_REPO,
-                tokenLength: CONFIG.GITHUB_TOKEN ? CONFIG.GITHUB_TOKEN.length : 0
-            });
+            console.log('❌ Teams está DESABILITADO');
         }
         
         initializeApp();
-    }, 100);
+    }).catch((error) => {
+        console.warn('⚠️ Erro ao carregar configuração, usando padrão:', error);
+        
+        // Configuração padrão em caso de erro
+        window.CONFIG = {
+            GITHUB_TOKEN: null,
+            GITHUB_REPO: 'usuario/repositorio',
+            DEBUG_MODE: true,
+            TEAM_MEMBERS: ['Local User'],
+            TEAMS_ENABLED: false,
+            TEAMS_WEBHOOK_URL: null,
+            TEAMS_CONFIG: {
+                sendOnCreate: true,
+                sendSummary: true,
+                mentionTeam: false,
+                includeDetails: true
+            }
+        };
+        
+        window.GITHUB_CONFIG = {
+            owner: '',
+            repo: '',
+            token: null
+        };
+        
+        showToast('⚠️ Sistema funcionando em modo local (configuração padrão)', 'warning');
+        initializeApp();
+    });
 });
 
 function initializeApp() {
@@ -241,18 +261,22 @@ async function handleFormSubmit(e) {
 }
 
 async function salvarRelatorio(relatorio) {
-    console.log('Tentando salvar relatório...', relatorio);
-    console.log('Token configurado:', CONFIG.GITHUB_TOKEN ? 'Sim' : 'Não');
+    console.log('🔍 === INICIANDO SALVAMENTO DE RELATÓRIO ===');
+    console.log('Relatório:', relatorio.prefeitura, '-', relatorio.opsInfo);
+    console.log('window.CONFIG.TEAMS_ENABLED:', window.CONFIG.TEAMS_ENABLED);
+    console.log('window.CONFIG.TEAMS_WEBHOOK_URL existe:', !!window.CONFIG.TEAMS_WEBHOOK_URL);
+    console.log('window.CONFIG.TEAMS_CONFIG.sendOnCreate:', window.CONFIG.TEAMS_CONFIG?.sendOnCreate);
+    console.log('Token GitHub configurado:', window.CONFIG.GITHUB_TOKEN ? 'Sim' : 'Não');
     
     // Se não tiver token configurado, salvar localmente
-    if (!CONFIG.GITHUB_TOKEN || 
-        CONFIG.GITHUB_TOKEN === 'SEU_TOKEN_AQUI' ||
-        CONFIG.GITHUB_TOKEN === 'SEU_NOVO_TOKEN_AQUI') {
+    if (!window.CONFIG.GITHUB_TOKEN || 
+        window.CONFIG.GITHUB_TOKEN === 'SEU_TOKEN_AQUI' ||
+        window.CONFIG.GITHUB_TOKEN === 'SEU_NOVO_TOKEN_AQUI') {
         console.log('Salvando apenas localmente - token não configurado');
         salvarRelatorioLocal(relatorio);
         
         // 🎯 ENVIAR PARA TEAMS MESMO SEM GITHUB
-        if (CONFIG.TEAMS_ENABLED && CONFIG.TEAMS_CONFIG.sendOnCreate) {
+        if (window.CONFIG.TEAMS_ENABLED && window.CONFIG.TEAMS_CONFIG.sendOnCreate) {
             try {
                 console.log('Enviando para Teams (modo local)...');
                 await enviarParaTeams(relatorio, 'novo');
@@ -267,13 +291,13 @@ async function salvarRelatorio(relatorio) {
     try {
         console.log('Tentando salvar no GitHub...');
         // Extrair owner e repo do formato 'owner/repo'
-        const [owner, repo] = CONFIG.GITHUB_REPO.split('/');
+        const [owner, repo] = window.CONFIG.GITHUB_REPO.split('/');
         
         // Criar issue no GitHub
         const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`, {
             method: 'POST',
             headers: {
-                'Authorization': `token ${CONFIG.GITHUB_TOKEN}`,
+                'Authorization': `token ${window.CONFIG.GITHUB_TOKEN}`,
                 'Accept': 'application/vnd.github.v3+json',
                 'Content-Type': 'application/json'
             },
@@ -305,7 +329,7 @@ async function salvarRelatorio(relatorio) {
         salvarRelatorioLocal(relatorio);
         
         // Enviar para Teams se configurado
-        if (CONFIG.TEAMS_ENABLED && CONFIG.TEAMS_CONFIG.sendOnCreate) {
+        if (window.CONFIG.TEAMS_ENABLED && window.CONFIG.TEAMS_CONFIG.sendOnCreate) {
             try {
                 await enviarParaTeams(relatorio, 'novo');
             } catch (teamsError) {
@@ -320,7 +344,7 @@ async function salvarRelatorio(relatorio) {
         salvarRelatorioLocal(relatorio);
         
         // Tentar enviar para Teams mesmo com falha no GitHub
-        if (CONFIG.TEAMS_ENABLED && CONFIG.TEAMS_CONFIG.sendOnCreate) {
+        if (window.CONFIG.TEAMS_ENABLED && window.CONFIG.TEAMS_CONFIG.sendOnCreate) {
             try {
                 await enviarParaTeams(relatorio, 'novo');
                 console.log('Relatório enviado para Teams apesar do erro no GitHub');
@@ -820,12 +844,12 @@ function createDemoReport() {
 
 async function loadReportsFromGitHub() {
     // Verificar se há configuração válida do GitHub
-    if (!CONFIG.GITHUB_REPO || CONFIG.GITHUB_REPO === 'usuario/repositorio') {
+    if (!window.CONFIG.GITHUB_REPO || window.CONFIG.GITHUB_REPO === 'usuario/repositorio') {
         throw new Error('Configuração do GitHub não definida');
     }
     
     // Extrair owner e repo do formato 'owner/repo'
-    const [owner, repo] = CONFIG.GITHUB_REPO.split('/');
+    const [owner, repo] = window.CONFIG.GITHUB_REPO.split('/');
     
     if (!owner || !repo) {
         throw new Error('Formato de repositório inválido. Use: owner/repo');
@@ -991,16 +1015,16 @@ function loadCurrentConfig() {
     const teamInput = document.getElementById('teamMembers');
     
     // Carregar configuração atual
-    if (CONFIG.GITHUB_TOKEN && CONFIG.GITHUB_TOKEN !== 'SEU_TOKEN_AQUI') {
-        tokenInput.value = CONFIG.GITHUB_TOKEN;
+    if (window.CONFIG.GITHUB_TOKEN && window.CONFIG.GITHUB_TOKEN !== 'SEU_TOKEN_AQUI') {
+        tokenInput.value = window.CONFIG.GITHUB_TOKEN;
     }
     
-    if (CONFIG.GITHUB_REPO && CONFIG.GITHUB_REPO !== 'usuario/repositorio') {
-        repoInput.value = CONFIG.GITHUB_REPO;
+    if (window.CONFIG.GITHUB_REPO && window.CONFIG.GITHUB_REPO !== 'usuario/repositorio') {
+        repoInput.value = window.CONFIG.GITHUB_REPO;
     }
     
-    if (CONFIG.TEAM_MEMBERS && CONFIG.TEAM_MEMBERS.length > 0) {
-        teamInput.value = CONFIG.TEAM_MEMBERS.join(', ');
+    if (window.CONFIG.TEAM_MEMBERS && window.CONFIG.TEAM_MEMBERS.length > 0) {
+        teamInput.value = window.CONFIG.TEAM_MEMBERS.join(', ');
     }
     
     // Adicionar botão de compartilhamento se não existir
@@ -1058,11 +1082,11 @@ function saveGitHubConfig() {
     // Salvar configuração
     try {
         // Atualizar configuração temporária
-        CONFIG.GITHUB_TOKEN = token;
-        CONFIG.GITHUB_REPO = repo;
-        CONFIG.TEAM_MEMBERS = team;
-        CONFIG.TEAMS_WEBHOOK_URL = teamsWebhook;
-        CONFIG.TEAMS_ENABLED = teamsEnabled;
+        window.CONFIG.GITHUB_TOKEN = token;
+        window.CONFIG.GITHUB_REPO = repo;
+        window.CONFIG.TEAM_MEMBERS = team;
+        window.CONFIG.TEAMS_WEBHOOK_URL = teamsWebhook;
+        window.CONFIG.TEAMS_ENABLED = teamsEnabled;
         
         // Atualizar GITHUB_CONFIG para compatibilidade
         GITHUB_CONFIG.token = token;
@@ -1131,13 +1155,13 @@ function clearGitHubConfig() {
 
 function showConfigStatus() {
     const statusDiv = document.getElementById('configStatus');
-    const isConfigured = CONFIG.GITHUB_TOKEN && 
-                        CONFIG.GITHUB_TOKEN !== 'SEU_TOKEN_AQUI' &&
-                        CONFIG.GITHUB_REPO && 
-                        CONFIG.GITHUB_REPO !== 'usuario/repositorio';
+    const isConfigured = window.CONFIG.GITHUB_TOKEN && 
+                        window.CONFIG.GITHUB_TOKEN !== 'SEU_TOKEN_AQUI' &&
+                        window.CONFIG.GITHUB_REPO && 
+                        window.CONFIG.GITHUB_REPO !== 'usuario/repositorio';
     
     if (isConfigured) {
-        showConfigMessage(`✅ GitHub configurado: ${CONFIG.GITHUB_REPO}`, 'success');
+        showConfigMessage(`✅ GitHub configurado: ${window.CONFIG.GITHUB_REPO}`, 'success');
     } else {
         showConfigMessage('⚠️ Modo local ativo. Configure o GitHub para sincronizar com a equipe.', 'info');
     }
@@ -1157,14 +1181,14 @@ async function diagnosticoCompleto() {
     // 1. Verificar configuração
     console.log('1️⃣ Verificando configuração...');
     console.log('CONFIG:', {
-        hasToken: !!CONFIG.GITHUB_TOKEN,
-        tokenLength: CONFIG.GITHUB_TOKEN ? CONFIG.GITHUB_TOKEN.length : 0,
-        tokenPrefix: CONFIG.GITHUB_TOKEN ? CONFIG.GITHUB_TOKEN.substring(0, 4) + '...' : 'N/A',
-        repo: CONFIG.GITHUB_REPO,
-        debugMode: CONFIG.DEBUG_MODE
+        hasToken: !!window.CONFIG.GITHUB_TOKEN,
+        tokenLength: window.CONFIG.GITHUB_TOKEN ? window.CONFIG.GITHUB_TOKEN.length : 0,
+        tokenPrefix: window.CONFIG.GITHUB_TOKEN ? window.CONFIG.GITHUB_TOKEN.substring(0, 4) + '...' : 'N/A',
+        repo: window.CONFIG.GITHUB_REPO,
+        debugMode: window.CONFIG.DEBUG_MODE
     });
     
-    if (!CONFIG.GITHUB_TOKEN || CONFIG.GITHUB_TOKEN === 'SEU_TOKEN_AQUI') {
+    if (!window.CONFIG.GITHUB_TOKEN || window.CONFIG.GITHUB_TOKEN === 'SEU_TOKEN_AQUI') {
         console.log('❌ Token não configurado');
         showToast('Token GitHub não configurado', 'error');
         return;
@@ -1175,7 +1199,7 @@ async function diagnosticoCompleto() {
     try {
         const userResponse = await fetch('https://api.github.com/user', {
             headers: {
-                'Authorization': `token ${CONFIG.GITHUB_TOKEN}`,
+                'Authorization': `token ${window.CONFIG.GITHUB_TOKEN}`,
                 'Accept': 'application/vnd.github.v3+json',
                 'User-Agent': 'opsReport-v1.0'
             }
@@ -1200,10 +1224,10 @@ async function diagnosticoCompleto() {
     // 3. Testar acesso ao repositório
     console.log('3️⃣ Testando acesso ao repositório...');
     try {
-        const [owner, repo] = CONFIG.GITHUB_REPO.split('/');
+        const [owner, repo] = window.CONFIG.GITHUB_REPO.split('/');
         const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
             headers: {
-                'Authorization': `token ${CONFIG.GITHUB_TOKEN}`,
+                'Authorization': `token ${window.CONFIG.GITHUB_TOKEN}`,
                 'Accept': 'application/vnd.github.v3+json',
                 'User-Agent': 'opsReport-v1.0'
             }
@@ -1228,11 +1252,11 @@ async function diagnosticoCompleto() {
     // 4. Testar criação de issue (simulação)
     console.log('4️⃣ Testando permissões de escrita...');
     try {
-        const [owner, repo] = CONFIG.GITHUB_REPO.split('/');
+        const [owner, repo] = window.CONFIG.GITHUB_REPO.split('/');
         const testResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`, {
             method: 'POST',
             headers: {
-                'Authorization': `token ${CONFIG.GITHUB_TOKEN}`,
+                'Authorization': `token ${window.CONFIG.GITHUB_TOKEN}`,
                 'Accept': 'application/vnd.github.v3+json',
                 'Content-Type': 'application/json',
                 'User-Agent': 'opsReport-v1.0'
@@ -1283,7 +1307,7 @@ async function testarNovoToken() {
             
             if (confirm('Token válido! Deseja salvar esta configuração?')) {
                 // Atualizar configuração temporariamente
-                CONFIG.GITHUB_TOKEN = novoToken;
+                window.CONFIG.GITHUB_TOKEN = novoToken;
                 showToast('Token atualizado temporariamente. Atualize o config.js para salvar permanentemente.', 'info');
             }
         } else {
@@ -1355,7 +1379,7 @@ Para configurar um novo token GitHub:
             
             if (repoResponse.ok) {
                 // Atualizar configuração temporariamente
-                CONFIG.GITHUB_TOKEN = novoToken;
+                window.CONFIG.GITHUB_TOKEN = novoToken;
                 GITHUB_CONFIG.token = novoToken;
                 
                 showToast(`✅ Token configurado para: ${userData.login}`, 'success');
@@ -1399,14 +1423,14 @@ O token funcionará nesta sessão, mas será perdido ao recarregar a página se 
 // === INTEGRAÇÃO COM MICROSOFT TEAMS ===
 async function enviarParaTeams(relatorio, tipo = 'novo') {
     console.log('🔍 === TENTATIVA DE ENVIO PARA TEAMS ===');
-    console.log('TEAMS_ENABLED:', CONFIG.TEAMS_ENABLED);
-    console.log('TEAMS_WEBHOOK_URL:', CONFIG.TEAMS_WEBHOOK_URL ? 'Configurado' : 'Não configurado');
-    console.log('sendOnCreate:', CONFIG.TEAMS_CONFIG?.sendOnCreate);
+    console.log('TEAMS_ENABLED:', window.CONFIG.TEAMS_ENABLED);
+    console.log('TEAMS_WEBHOOK_URL:', window.CONFIG.TEAMS_WEBHOOK_URL ? 'Configurado' : 'Não configurado');
+    console.log('sendOnCreate:', window.CONFIG.TEAMS_CONFIG?.sendOnCreate);
     
-    if (!CONFIG.TEAMS_ENABLED || !CONFIG.TEAMS_WEBHOOK_URL) {
+    if (!window.CONFIG.TEAMS_ENABLED || !window.CONFIG.TEAMS_WEBHOOK_URL) {
         console.log('📢 Teams não configurado ou desabilitado');
-        console.log('- TEAMS_ENABLED:', CONFIG.TEAMS_ENABLED);
-        console.log('- TEAMS_WEBHOOK_URL:', !!CONFIG.TEAMS_WEBHOOK_URL);
+        console.log('- TEAMS_ENABLED:', window.CONFIG.TEAMS_ENABLED);
+        console.log('- TEAMS_WEBHOOK_URL:', !!window.CONFIG.TEAMS_WEBHOOK_URL);
         return false;
     }
     
@@ -1416,7 +1440,7 @@ async function enviarParaTeams(relatorio, tipo = 'novo') {
         
         const card = criarCardTeams(relatorio, tipo);
         
-        const response = await fetch(CONFIG.TEAMS_WEBHOOK_URL, {
+        const response = await fetch(window.CONFIG.TEAMS_WEBHOOK_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1454,9 +1478,9 @@ function criarCardTeams(relatorio, tipo) {
     }
     
     // Formato para webhooks modernos (Power Automate/Logic Apps)
-    const isModernWebhook = CONFIG.TEAMS_WEBHOOK_URL && 
-                           (CONFIG.TEAMS_WEBHOOK_URL.includes('logic.azure.com') || 
-                            CONFIG.TEAMS_WEBHOOK_URL.includes('prod-'));
+    const isModernWebhook = window.CONFIG.TEAMS_WEBHOOK_URL && 
+                           (window.CONFIG.TEAMS_WEBHOOK_URL.includes('logic.azure.com') || 
+                            window.CONFIG.TEAMS_WEBHOOK_URL.includes('prod-'));
     
     if (isModernWebhook) {
         // Formato simplificado para Power Automate
@@ -1555,14 +1579,14 @@ function criarCardTeams(relatorio, tipo) {
         }
     ];
     
-    if (CONFIG.GITHUB_REPO) {
+    if (window.CONFIG.GITHUB_REPO) {
         card.potentialAction.push({
             "@type": "OpenUri",
             "name": "🔗 Ver no GitHub",
             "targets": [
                 {
                     "os": "default",
-                    "uri": `https://github.com/${CONFIG.GITHUB_REPO}/issues`
+                    "uri": `https://github.com/${window.CONFIG.GITHUB_REPO}/issues`
                 }
             ]
         });
@@ -1586,13 +1610,13 @@ function getCriticidadeText(criticidade) {
 }
 
 async function testarWebhookTeams() {
-    if (!CONFIG.TEAMS_WEBHOOK_URL) {
+    if (!window.CONFIG.TEAMS_WEBHOOK_URL) {
         showToast('Configure o webhook do Teams primeiro', 'warning');
         return;
     }
     
     console.log('🧪 === TESTE DETALHADO DO TEAMS ===');
-    console.log('URL:', CONFIG.TEAMS_WEBHOOK_URL);
+    console.log('URL:', window.CONFIG.TEAMS_WEBHOOK_URL);
     
     // Primeiro, vamos testar com uma mensagem simples
     const mensagemSimples = {
@@ -1603,7 +1627,7 @@ async function testarWebhookTeams() {
         showToast('Enviando teste simples para Teams...', 'info');
         console.log('📤 Enviando mensagem simples:', mensagemSimples);
         
-        const response = await fetch(CONFIG.TEAMS_WEBHOOK_URL, {
+        const response = await fetch(window.CONFIG.TEAMS_WEBHOOK_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1683,7 +1707,7 @@ async function testarCardCompleto() {
             console.log(`📤 Testando formato: ${formato.nome}`);
             showToast(`Testando formato: ${formato.nome}`, 'info');
             
-            const response = await fetch(CONFIG.TEAMS_WEBHOOK_URL, {
+            const response = await fetch(window.CONFIG.TEAMS_WEBHOOK_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1848,14 +1872,14 @@ function validarWebhookTeams(url) {
 async function diagnosticarProblemaTeams() {
     console.log('🔍 === DIAGNÓSTICO COMPLETO DO TEAMS ===');
     
-    if (!CONFIG.TEAMS_WEBHOOK_URL) {
+    if (!window.CONFIG.TEAMS_WEBHOOK_URL) {
         console.log('❌ URL do webhook não configurada');
         showToast('Configure a URL do webhook primeiro', 'error');
         return;
     }
     
     // 1. Validar URL
-    const validacao = validarWebhookTeams(CONFIG.TEAMS_WEBHOOK_URL);
+    const validacao = validarWebhookTeams(window.CONFIG.TEAMS_WEBHOOK_URL);
     console.log('1️⃣ Validação da URL:', validacao);
     
     if (!validacao.valido) {
@@ -1874,7 +1898,7 @@ async function diagnosticarProblemaTeams() {
     // 2. Teste de conectividade básica
     console.log('2️⃣ Testando conectividade...');
     try {
-        const testeConexao = await fetch(CONFIG.TEAMS_WEBHOOK_URL, {
+        const testeConexao = await fetch(window.CONFIG.TEAMS_WEBHOOK_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1924,3 +1948,59 @@ async function diagnosticarProblemaTeams() {
     
     console.log('🔍 === FIM DO DIAGNÓSTICO ===');
 }
+
+// === FUNÇÃO DE DEBUG RÁPIDO ===
+window.debugTeams = function() {
+    console.log('🔍 === DEBUG TEAMS ===');
+    console.log('CONFIG existe:', typeof CONFIG !== 'undefined');
+    console.log('window.CONFIG.TEAMS_ENABLED:', CONFIG?.TEAMS_ENABLED);
+    console.log('window.CONFIG.TEAMS_WEBHOOK_URL:', CONFIG?.TEAMS_WEBHOOK_URL ? 'Configurado' : 'Não configurado');
+    console.log('window.CONFIG.TEAMS_CONFIG:', CONFIG?.TEAMS_CONFIG);
+    
+    if (CONFIG?.TEAMS_WEBHOOK_URL) {
+        console.log('URL do webhook (primeiros 50 chars):', window.CONFIG.TEAMS_WEBHOOK_URL.substring(0, 50) + '...');
+    }
+    
+    // Testar função diretamente
+    if (typeof enviarParaTeams === 'function') {
+        console.log('✅ Função enviarParaTeams existe');
+        
+        const relatorioTeste = {
+            id: Date.now(),
+            prefeitura: 'Debug Test',
+            opsInfo: 'Teste Debug Console',
+            versaoSistema: 'debug-1.0',
+            ambiente: 'Teste',
+            criticidade: 5,
+            timestamp: Date.now(),
+            tarefas: [{id: 1, texto: 'Teste debug'}],
+            conclusao: 'Teste pelo console'
+        };
+        
+        console.log('Executando enviarParaTeams...');
+        enviarParaTeams(relatorioTeste, 'debug').then(result => {
+            console.log('Resultado:', result);
+        }).catch(error => {
+            console.log('Erro:', error);
+        });
+    } else {
+        console.log('❌ Função enviarParaTeams não encontrada');
+    }
+};
+
+window.testeRapidoTeams = function() {
+    const relatorio = {
+        id: Date.now(),
+        prefeitura: 'TesteConsole',
+        opsInfo: 'Teste Via Console',
+        versaoSistema: 'console-1.0',
+        ambiente: 'Debug',
+        criticidade: 3,
+        timestamp: Date.now(),
+        tarefas: [{id: 1, texto: 'Teste direto'}],
+        conclusao: 'Testando via console do navegador'
+    };
+    
+    console.log('🧪 Executando teste direto...');
+    return salvarRelatorio(relatorio);
+};

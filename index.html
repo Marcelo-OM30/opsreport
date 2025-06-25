@@ -252,22 +252,63 @@
         </div>
     </div>
 
-    <!-- Configuração: tenta carregar config.js (local) ou config.public.js (GitHub Pages) -->
+    <!-- Sistema de Configuração Unificado -->
     <script>
-        // Tentar carregar config.js primeiro (desenvolvimento/local)
-        const script1 = document.createElement('script');
-        script1.src = 'config.js';
-        script1.onerror = function() {
-            // Se config.js falhar, carregar config.public.js
-            console.log('📁 config.js não encontrado, carregando config.public.js');
-            const script2 = document.createElement('script');
-            script2.src = 'config.public.js';
-            script2.onerror = function() {
-                console.warn('⚠️ Nenhum arquivo de configuração encontrado');
+        // Variável global que será populada pelos arquivos de configuração
+        window.CONFIG = window.CONFIG || {};
+        
+        // Flag para indicar se alguma configuração foi carregada
+        window.configLoaded = false;
+        
+        // Função para carregar configuração dinamicamente
+        function loadConfigFile(src, fallback = null) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = () => {
+                    console.log(`✅ Configuração carregada: ${src}`);
+                    window.configLoaded = true;
+                    resolve();
+                };
+                script.onerror = () => {
+                    console.log(`❌ Falha ao carregar: ${src}`);
+                    if (fallback) {
+                        loadConfigFile(fallback).then(resolve).catch(reject);
+                    } else {
+                        reject(new Error(`Falha ao carregar ${src}`));
+                    }
+                };
+                document.head.appendChild(script);
+            });
+        }
+        
+        // Carregar configuração: config.js (local) ou config.public.js (público)
+        loadConfigFile('config.js', 'config.public.js').catch(() => {
+            console.warn('⚠️ Nenhum arquivo de configuração encontrado, usando configuração padrão');
+            // Configuração mínima padrão
+            window.CONFIG = {
+                GITHUB_TOKEN: null,
+                GITHUB_REPO: 'usuario/repositorio',
+                TEAM_MEMBERS: ['Local User'],
+                APP_NAME: 'Sistema de Relatórios de Operações',
+                VERSION: '1.0.0',
+                DEBUG_MODE: true,
+                TEAMS_ENABLED: false,
+                TEAMS_WEBHOOK_URL: null,
+                TEAMS_CONFIG: {
+                    sendOnCreate: true,
+                    sendSummary: true,
+                    mentionTeam: false,
+                    includeDetails: true
+                },
+                EXPORT_CONFIG: {
+                    includeTeamInfo: true,
+                    includeTimestamp: true,
+                    maxTasksInSummary: 10
+                }
             };
-            document.head.appendChild(script2);
-        };
-        document.head.appendChild(script1);
+            window.configLoaded = true;
+        });
     </script>
     
     <!-- Configuração Dinâmica (funciona sem config.js) -->

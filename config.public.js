@@ -1,7 +1,8 @@
 // Configuração PÚBLICA do Sistema de Relatórios
 // Este arquivo SERÁ commitado - NÃO coloque dados sensíveis aqui!
 
-const CONFIG = {
+// Configuração base que será mesclada com window.CONFIG
+const CONFIG_PUBLIC = {
     // === CONFIGURAÇÃO BÁSICA ===
     GITHUB_TOKEN: null, // Configure via interface ou config.js local
     GITHUB_REPO: 'Marcelo-OM30/opsreport',
@@ -39,19 +40,31 @@ const CONFIG = {
     }
 };
 
-// === CONFIGURAÇÕES AVANÇADAS ===
+// === APLICAR CONFIGURAÇÃO ===
 if (typeof window !== 'undefined') {
-    // Tentar carregar configuração do localStorage
+    // Inicializar CONFIG se não existir
+    window.CONFIG = window.CONFIG || {};
+    
+    // Mesclar configuração pública com a existente
+    Object.assign(window.CONFIG, CONFIG_PUBLIC);
+    
+    // Tentar carregar configuração do localStorage (sobrescreve as configurações acima)
     try {
         const localConfig = localStorage.getItem('opsReport_config');
         if (localConfig) {
             const parsed = JSON.parse(localConfig);
             if (parsed.teamsWebhook) {
-                CONFIG.TEAMS_WEBHOOK_URL = parsed.teamsWebhook;
-                CONFIG.TEAMS_ENABLED = parsed.teamsEnabled || false;
+                window.CONFIG.TEAMS_WEBHOOK_URL = parsed.teamsWebhook;
+                window.CONFIG.TEAMS_ENABLED = parsed.teamsEnabled || false;
             }
             if (parsed.token) {
-                CONFIG.GITHUB_TOKEN = parsed.token;
+                window.CONFIG.GITHUB_TOKEN = parsed.token;
+            }
+            if (parsed.repo) {
+                window.CONFIG.GITHUB_REPO = parsed.repo;
+            }
+            if (parsed.team) {
+                window.CONFIG.TEAM_MEMBERS = parsed.team;
             }
         }
     } catch (error) {
@@ -59,16 +72,18 @@ if (typeof window !== 'undefined') {
     }
     
     // Log de status
-    if (CONFIG.DEBUG_MODE) {
-        console.log('🔧 Configuração pública carregada');
-        console.log('📡 GitHub:', CONFIG.GITHUB_TOKEN ? '✅ Configurado' : '❌ Configure via modal');
-        console.log('📢 Teams:', CONFIG.TEAMS_ENABLED ? '✅ Habilitado' : '❌ Configure via modal');
+    if (window.CONFIG.DEBUG_MODE) {
+        console.log('🔧 Configuração pública carregada e mesclada');
+        console.log('📡 GitHub:', window.CONFIG.GITHUB_TOKEN ? '✅ Configurado' : '❌ Configure via modal');
+        console.log('📢 Teams:', window.CONFIG.TEAMS_ENABLED ? '✅ Habilitado' : '❌ Configure via modal');
     }
 }
 
-// Manter compatibilidade
-const GITHUB_CONFIG = {
-    owner: CONFIG.GITHUB_REPO ? CONFIG.GITHUB_REPO.split('/')[0] : '',
-    repo: CONFIG.GITHUB_REPO ? CONFIG.GITHUB_REPO.split('/')[1] : '',
-    token: CONFIG.GITHUB_TOKEN
-};
+// Manter compatibilidade com código que espera GITHUB_CONFIG
+if (typeof window !== 'undefined') {
+    window.GITHUB_CONFIG = {
+        owner: window.CONFIG.GITHUB_REPO ? window.CONFIG.GITHUB_REPO.split('/')[0] : '',
+        repo: window.CONFIG.GITHUB_REPO ? window.CONFIG.GITHUB_REPO.split('/')[1] : '',
+        token: window.CONFIG.GITHUB_TOKEN
+    };
+}

@@ -1,6 +1,26 @@
 // Sistema de Configuração Dinâmica
 // Este arquivo permite configurar o GitHub sem expor tokens
 
+// Função utilitária para aguardar que a configuração seja carregada
+function waitForConfig() {
+    return new Promise((resolve) => {
+        if (window.configLoaded && window.CONFIG) {
+            resolve();
+            return;
+        }
+        
+        const checkConfig = () => {
+            if (window.configLoaded && window.CONFIG) {
+                resolve();
+            } else {
+                setTimeout(checkConfig, 50);
+            }
+        };
+        
+        checkConfig();
+    });
+}
+
 const DynamicConfig = {
     // Configuração padrão (modo local)
     getConfig() {
