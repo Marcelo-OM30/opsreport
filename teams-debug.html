@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teams Debug - Teste Direto</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background: #0078d4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 8px;
+            font-size: 14px;
+        }
+        .btn:hover { background: #106ebe; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .log {
+            background: #1e1e1e;
+            color: #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .webhook-input {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .status {
+            padding: 8px;
+            margin: 8px 0;
+            border-radius: 4px;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Diagnóstico Teams - Teste Direto</h1>
+        
+        <div>
+            <h3>Webhook URL:</h3>
+            <input type="text" id="webhookUrl" class="webhook-input" 
+                   placeholder="Cole a URL do webhook do Teams aqui">
+            <button class="btn" onclick="setWebhookFromConfig()">Usar da Config</button>
+        </div>
+        
+        <div>
+            <h3>Testes:</h3>
+            <button class="btn" onclick="testeSimples()">Teste Simples</button>
+            <button class="btn" onclick="testeCompleto()">Teste Completo</button>
+            <button class="btn" onclick="testeFormatos()">Testar Todos Formatos</button>
+            <button class="btn" onclick="verificarCORS()">Verificar CORS</button>
+            <button class="btn" onclick="limparLog()">Limpar Log</button>
+        </div>
+        
+        <div id="status"></div>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        // Funções de log
+        function log(msg, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.getElementById('log');
+            const statusDiv = document.getElementById('status');
+            
+            const formattedMsg = `[${timestamp}] ${msg}`;
+            console.log(formattedMsg);
+            
+            logDiv.textContent += formattedMsg + '\n';
+            logDiv.scrollTop = logDiv.scrollHeight;
+            
+            // Atualizar status
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = msg;
+        }
+
+        function limparLog() {
+            document.getElementById('log').textContent = '';
+            document.getElementById('status').textContent = '';
+        }
+
+        function setWebhookFromConfig() {
+            if (window.CONFIG && window.CONFIG.TEAMS_WEBHOOK_URL) {
+                document.getElementById('webhookUrl').value = window.CONFIG.TEAMS_WEBHOOK_URL;
+                log('✅ URL carregada da configuração', 'success');
+            } else {
+                log('❌ Configuração não encontrada', 'error');
+            }
+        }
+
+        function getWebhookUrl() {
+            const url = document.getElementById('webhookUrl').value.trim();
+            if (!url) {
+                log('❌ URL do webhook não informada', 'error');
+                return null;
+            }
+            return url;
+        }
+
+        // Teste simples - apenas texto
+        async function testeSimples() {
+            const url = getWebhookUrl();
+            if (!url) return;
+
+            log('🧪 Iniciando teste simples...');
+            
+            const payload = {
+                text: "🧪 Teste simples do sistema de relatórios - " + new Date().toLocaleString('pt-BR')
+            };
+
+            try {
+                log('📤 Enviando payload simples...');
+                log('URL: ' + url.substring(0, 50) + '...');
+                log('Payload: ' + JSON.stringify(payload, null, 2));
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                log(`📥 Resposta HTTP: ${response.status} ${response.statusText}`);
+
+                if (response.ok) {
+                    const responseText = await response.text();
+                    log('✅ Sucesso! Resposta: ' + responseText, 'success');
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ Erro ${response.status}: ${errorText}`, 'error');
+                }
+            } catch (error) {
+                log('❌ Erro de rede: ' + error.message, 'error');
+            }
+        }
+
+        // Teste completo - card formatado
+        async function testeCompleto() {
+            const url = getWebhookUrl();
+            if (!url) return;
+
+            log('🧪 Iniciando teste completo...');
+            
+            const relatorio = {
+                prefeitura: 'Prefeitura Teste',
+                opsInfo: 'Teste Debug Completo',
+                versaoSistema: 'debug-2.0',
+                ambiente: 'Teste',
+                criticidade: 5,
+                timestamp: Date.now(),
+                responsavel: 'Sistema Debug',
+                conclusao: 'aprovado'
+            };
+
+            // Detectar tipo de webhook
+            const isModernWebhook = url.includes('logic.azure.com') || url.includes('prod-');
+            log('Tipo de webhook detectado: ' + (isModernWebhook ? 'Power Automate/Logic Apps' : 'Teams Clássico'));
+
+            let payload;
+            if (isModernWebhook) {
+                // Formato simplificado para Power Automate
+                payload = {
+                    text: `🚀 Teste Completo - Relatório de Operação\n\n` +
+                          `🏛️ **Prefeitura:** ${relatorio.prefeitura}\n` +
+                          `📋 **Operação:** ${relatorio.opsInfo}\n` +
+                          `🔧 **Versão:** ${relatorio.versaoSistema}\n` +
+                          `🌐 **Ambiente:** ${relatorio.ambiente}\n` +
+                          `⚠️ **Criticidade:** ${relatorio.criticidade}/10\n` +
+                          `👤 **Responsável:** ${relatorio.responsavel}\n` +
+                          `📅 **Data:** ${new Date(relatorio.timestamp).toLocaleString('pt-BR')}\n\n` +
+                          `✅ **Conclusão:** ${relatorio.conclusao}\n\n` +
+                          `🔗 [Ver Sistema](file:///home/marcelo_om30/workspaces/opsReport/index.html)`
+                };
+            } else {
+                // Formato legacy para webhooks clássicos do Teams
+                payload = {
+                    "@type": "MessageCard",
+                    "@context": "https://schema.org/extensions",
+                    "summary": "Novo Relatório de Operação",
+                    "themeColor": "0078D7",
+                    "title": "🚀 Teste Completo - Relatório de Operação",
+                    "sections": [{
+                        "facts": [
+                            { "name": "🏛️ Prefeitura", "value": relatorio.prefeitura },
+                            { "name": "📋 Operação", "value": relatorio.opsInfo },
+                            { "name": "🔧 Versão", "value": relatorio.versaoSistema },
+                            { "name": "🌐 Ambiente", "value": relatorio.ambiente },
+                            { "name": "⚠️ Criticidade", "value": `${relatorio.criticidade}/10` },
+                            { "name": "📅 Data", "value": new Date(relatorio.timestamp).toLocaleString('pt-BR') }
+                        ]
+                    }]
+                };
+            }
+
+            try {
+                log('📤 Enviando payload completo...');
+                log('Payload: ' + JSON.stringify(payload, null, 2));
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                log(`📥 Resposta HTTP: ${response.status} ${response.statusText}`);
+
+                if (response.ok) {
+                    const responseText = await response.text();
+                    log('✅ Sucesso! Resposta: ' + responseText, 'success');
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ Erro ${response.status}: ${errorText}`, 'error');
+                }
+            } catch (error) {
+                log('❌ Erro de rede: ' + error.message, 'error');
+            }
+        }
+
+        // Testar diferentes formatos
+        async function testeFormatos() {
+            const url = getWebhookUrl();
+            if (!url) return;
+
+            log('🧪 Testando diferentes formatos...');
+
+            const formatos = [
+                {
+                    nome: 'Texto simples',
+                    payload: { text: "Teste formato 1 - Texto simples" }
+                },
+                {
+                    nome: 'Texto com markdown',
+                    payload: { 
+                        text: "**Teste formato 2** - *Texto com markdown*\n\n- Item 1\n- Item 2" 
+                    }
+                },
+                {
+                    nome: 'MessageCard legacy',
+                    payload: {
+                        "@type": "MessageCard",
+                        "@context": "https://schema.org/extensions",
+                        "summary": "Teste MessageCard",
+                        "title": "Teste formato 3 - MessageCard"
+                    }
+                }
+            ];
+
+            for (const formato of formatos) {
+                log(`\n📤 Testando: ${formato.nome}`);
+                
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formato.payload)
+                    });
+
+                    log(`📥 ${formato.nome}: ${response.status} ${response.statusText}`);
+                    
+                    if (response.ok) {
+                        log(`✅ ${formato.nome} funcionou!`, 'success');
+                    } else {
+                        const errorText = await response.text();
+                        log(`❌ ${formato.nome} falhou: ${errorText}`, 'error');
+                    }
+                } catch (error) {
+                    log(`❌ ${formato.nome} erro: ${error.message}`, 'error');
+                }
+
+                // Pausa entre testes
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+
+        // Verificar problemas de CORS
+        async function verificarCORS() {
+            const url = getWebhookUrl();
+            if (!url) return;
+
+            log('🧪 Verificando CORS...');
+            
+            try {
+                // Primeiro, tentar um OPTIONS request
+                log('📤 Fazendo OPTIONS request...');
+                const optionsResponse = await fetch(url, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+                
+                log(`📥 OPTIONS response: ${optionsResponse.status}`);
+                
+                // Verificar headers CORS
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': optionsResponse.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': optionsResponse.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': optionsResponse.headers.get('Access-Control-Allow-Headers')
+                };
+                
+                log('Headers CORS encontrados:');
+                log(JSON.stringify(corsHeaders, null, 2));
+                
+            } catch (error) {
+                log('❌ Erro CORS: ' + error.message, 'error');
+                log('Isso pode indicar problema de CORS ou URL inválida');
+            }
+        }
+
+        // Inicialização
+        window.addEventListener('load', () => {
+            log('🔧 Sistema de debug carregado');
+            log('CONFIG disponível: ' + (window.CONFIG ? 'Sim' : 'Não'));
+            
+            if (window.CONFIG) {
+                log('TEAMS_ENABLED: ' + window.CONFIG.TEAMS_ENABLED);
+                log('TEAMS_WEBHOOK_URL: ' + (window.CONFIG.TEAMS_WEBHOOK_URL ? 'Configurado' : 'Não configurado'));
+                setWebhookFromConfig();
+            }
+        });
+    </script>
+</body>
+</html>
