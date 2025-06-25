@@ -1,0 +1,21 @@
+{
+  "name": "ops-report-system",
+  "version": "1.0.0",
+  "description": "Sistema de Relatório de Operações para GitHub Pages",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "build": "echo 'Build completed - static files ready for GitHub Pages'",
+    "deploy": "echo 'Deploy to GitHub Pages - push to main branch'"
+  },
+  "keywords": [
+    "operations",
+    "reports",
+    "github-pages",
+    "dashboard"
+  ],
+  "author": "Sistema de Relatórios",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}

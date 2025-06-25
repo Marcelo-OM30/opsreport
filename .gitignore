@@ -1,0 +1,33 @@
+# Arquivos sensíveis - NÃO fazer commit!
+*.token
+*.env
+.env
+config.local.js
+script.local.js
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+*.log
+
+# Arquivos temporários
+*.tmp
+*.temp
+*~
+
+# Arquivos de backup
+*.bak
+*.backup
+
+# Node modules (se usar)
+node_modules/
+
+# Arquivos do editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Arquivos de configuração local
+config/local.json
+.config/

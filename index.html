@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Relatório de Operações</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-clipboard-check"></i> Sistema de Relatório de Operações</h1>
+            <p>Registre e acompanhe os relatórios de deploy e operações</p>
+        </header>
+
+        <main class="main-content">
+            <form id="reportForm" class="report-form">
+                <div class="form-section">
+                    <h2><i class="fas fa-server"></i> Informações do Sistema</h2>
+                    
+                    <div class="form-group">
+                        <label for="prefeitura">Prefeitura *</label>
+                        <select id="prefeitura" name="prefeitura" required>
+                            <option value="">Selecione uma prefeitura</option>
+                            <option value="jahu">Jaú</option>
+                            <option value="caieiras">Caieiras</option>
+                            <option value="cotia">Cotia</option>
+                            <option value="aruja">Arujá</option>
+                            <option value="hortolandia">Hortolândia</option>
+                            <option value="guaruja">Guarujá</option>
+                            <option value="ibiuna">Ibiúna</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="opsInfo">Nome e Número da Ops *</label>
+                        <input type="text" id="opsInfo" name="opsInfo" placeholder="Ex: OPS-2024-001 - Atualização Sistema" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="versaoSistema">Versão do Sistema *</label>
+                        <input type="text" id="versaoSistema" name="versaoSistema" placeholder="Ex: v2.3.1, 1.0.5, release-2024.1" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ambiente">Ambiente *</label>
+                        <select id="ambiente" name="ambiente" required>
+                            <option value="">Selecione o ambiente</option>
+                            <option value="homologacao">Homologação</option>
+                            <option value="producao">Produção</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2><i class="fas fa-exclamation-triangle"></i> Erros e Problemas</h2>
+                    
+                    <div class="form-group">
+                        <label for="erros">Descrição dos Erros</label>
+                        <textarea id="erros" name="erros" placeholder="Descreva os erros encontrados..." rows="4"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="criticidade">Criticidade dos Erros *</label>
+                        <div class="criticidade-container">
+                            <input type="range" id="criticidade" name="criticidade" min="1" max="10" value="1" class="criticidade-slider">
+                            <div class="criticidade-display">
+                                <span id="criticidadeValue">1</span>
+                                <span class="criticidade-label" id="criticidadeLabel">Baixa</span>
+                            </div>
+                        </div>
+                        <div class="criticidade-scale">
+                            <span>1 - Baixa</span>
+                            <span>5 - Média</span>
+                            <span>10 - Crítica</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2><i class="fas fa-tasks"></i> Tarefas</h2>
+                    
+                    <div class="tarefas-container">
+                        <div class="form-group">
+                            <label for="novaTarefa">Nova Tarefa</label>
+                            <div class="tarefa-input-container">
+                                <input type="text" id="novaTarefa" placeholder="Digite a descrição da tarefa...">
+                                <button type="button" id="adicionarTarefa" class="btn-add-task">
+                                    <i class="fas fa-plus"></i> Adicionar
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="tarefas-lista" id="tarefasLista">
+                            <!-- Tarefas serão adicionadas aqui dinamicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2><i class="fas fa-check-circle"></i> Avaliação e Conclusão</h2>
+                    
+                    <div class="form-group">
+                        <label for="avaliacaoQA">Avaliação QA</label>
+                        <textarea id="avaliacaoQA" name="avaliacaoQA" placeholder="Descreva a avaliação do QA..." rows="5"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="conclusao">Conclusão *</label>
+                        <div class="radio-group">
+                            <label class="radio-label aprovado">
+                                <input type="radio" name="conclusao" value="aprovado" required>
+                                <span class="radio-custom"></span>
+                                <i class="fas fa-check-circle"></i>
+                                Aprovado
+                            </label>
+                            <label class="radio-label recusado">
+                                <input type="radio" name="conclusao" value="recusado" required>
+                                <span class="radio-custom"></span>
+                                <i class="fas fa-times-circle"></i>
+                                Recusado
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" id="limparForm" class="btn btn-secondary">
+                        <i class="fas fa-eraser"></i> Limpar Formulário
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Salvar Relatório
+                    </button>
+                </div>
+            </form>
+        </main>
+
+        <section class="reports-section">
+            <h2><i class="fas fa-history"></i> Relatórios Recentes</h2>
+            <div id="reportsContainer" class="reports-container">
+                <div class="loading" id="loadingReports">
+                    <i class="fas fa-spinner fa-spin"></i> Carregando relatórios...
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
