@@ -31,8 +31,13 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeApp() {
     setupEventListeners();
     updateCriticidadeDisplay();
-    loadReports();
-    updateExportButtons(false); // Inicialmente desabilitados
+    loadReports(); // loadReports já vai definir o estado correto dos botões
+    
+    // Verificação adicional após um pequeno delay para garantir que tudo está correto
+    setTimeout(() => {
+        const reports = JSON.parse(localStorage.getItem('opsReports') || '[]');
+        updateExportButtons(reports.length > 0);
+    }, 200);
 }
 
 function setupEventListeners() {
@@ -279,15 +284,17 @@ async function loadReports() {
         
         if (relatoriosLocais.length === 0) {
             reportsContainer.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 40px;">Nenhum relatório encontrado ainda.</p>';
+            updateExportButtons(false); // Desabilitar se não há relatórios
             return;
         }
         
         renderReports(relatoriosLocais);
-        updateExportButtons(relatoriosLocais.length > 0);
+        updateExportButtons(true); // Habilitar se há relatórios
         
     } catch (error) {
         console.error('Erro ao carregar relatórios:', error);
         reportsContainer.innerHTML = '<p style="text-align: center; color: var(--danger-color); padding: 40px;">Erro ao carregar relatórios.</p>';
+        updateExportButtons(false); // Desabilitar em caso de erro
     } finally {
         loadingReports.style.display = 'none';
     }
@@ -328,28 +335,34 @@ function renderReports(reports) {
 }
 
 function updateExportButtons(hasReports) {
-    if (exportExcelBtn && exportWordBtn) {
-        // Só desabilita se não há relatórios
-        exportExcelBtn.disabled = !hasReports;
-        exportWordBtn.disabled = !hasReports;
+    // Aguardar um pouco para garantir que os elementos estão no DOM
+    setTimeout(() => {
+        const excelBtn = document.getElementById('exportExcel');
+        const wordBtn = document.getElementById('exportWord');
         
-        if (!hasReports) {
-            exportExcelBtn.title = 'Nenhum relatório disponível para exportar';
-            exportWordBtn.title = 'Nenhum relatório disponível para exportar';
-            exportExcelBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
-            exportWordBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
-        } else {
-            exportExcelBtn.title = 'Exportar todos os relatórios para Excel';
-            exportWordBtn.title = 'Exportar todos os relatórios para Word';
-            // Sempre mantém o texto padrão quando há relatórios (exceto durante processamento)
-            if (!exportExcelBtn.innerHTML.includes('fa-spin')) {
-                exportExcelBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
-            }
-            if (!exportWordBtn.innerHTML.includes('fa-spin')) {
-                exportWordBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
+        if (excelBtn && wordBtn) {
+            // Só desabilita se não há relatórios
+            excelBtn.disabled = !hasReports;
+            wordBtn.disabled = !hasReports;
+            
+            if (!hasReports) {
+                excelBtn.title = 'Nenhum relatório disponível para exportar';
+                wordBtn.title = 'Nenhum relatório disponível para exportar';
+                excelBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
+                wordBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
+            } else {
+                excelBtn.title = 'Exportar todos os relatórios para Excel';
+                wordBtn.title = 'Exportar todos os relatórios para Word';
+                // Sempre mantém o texto padrão quando há relatórios (exceto durante processamento)
+                if (!excelBtn.innerHTML.includes('fa-spin')) {
+                    excelBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
+                }
+                if (!wordBtn.innerHTML.includes('fa-spin')) {
+                    wordBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
+                }
             }
         }
-    }
+    }, 100);
 }
 
 // Funções de Exportação
@@ -367,8 +380,11 @@ function exportarExcel() {
             showToast('Nenhum relatório encontrado para exportar.', 'warning');
             // Restaurar botão imediatamente se não há relatórios
             setTimeout(() => {
-                exportBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
-                exportBtn.disabled = true;
+                const excelBtn = document.getElementById('exportExcel');
+                if (excelBtn) {
+                    excelBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
+                    excelBtn.disabled = true;
+                }
             }, 100);
             return;
         }
@@ -423,8 +439,11 @@ function exportarExcel() {
             const relatorios = JSON.parse(localStorage.getItem('opsReports') || '[]');
             const hasReports = relatorios.length > 0;
             
-            exportBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
-            exportBtn.disabled = !hasReports; // Só desabilita se não há relatórios
+            const excelBtn = document.getElementById('exportExcel');
+            if (excelBtn) {
+                excelBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
+                excelBtn.disabled = !hasReports; // Só desabilita se não há relatórios
+            }
         }, 500);
     }
 }
@@ -443,8 +462,11 @@ function exportarWord() {
             showToast('Nenhum relatório encontrado para exportar.', 'warning');
             // Restaurar botão imediatamente se não há relatórios
             setTimeout(() => {
-                exportBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
-                exportBtn.disabled = true;
+                const wordBtn = document.getElementById('exportWord');
+                if (wordBtn) {
+                    wordBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
+                    wordBtn.disabled = true;
+                }
             }, 100);
             return;
         }
@@ -571,8 +593,11 @@ function exportarWord() {
             const relatorios = JSON.parse(localStorage.getItem('opsReports') || '[]');
             const hasReports = relatorios.length > 0;
             
-            exportBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
-            exportBtn.disabled = !hasReports; // Só desabilita se não há relatórios
+            const wordBtn = document.getElementById('exportWord');
+            if (wordBtn) {
+                wordBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
+                wordBtn.disabled = !hasReports; // Só desabilita se não há relatórios
+            }
         }, 500);
     }
 }
