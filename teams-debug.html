@@ -16,6 +16,9 @@
         .remove-btn { background: #e74c3c; font-size: 0.8em; padding: 5px 10px; }
         .remove-btn:hover { background: #c0392b; }
         hr { border: 0; height: 1px; background-color: #ddd; margin: 2em 0; }
+        #statusMessage { margin-top: 1em; padding: 10px; border-radius: 6px; word-break: break-word; display: none; }
+        #statusMessage.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; display: block; }
+        #statusMessage.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; display: block; }
     </style>
 </head>
 <body>
@@ -37,6 +40,7 @@
         <h2>Enviar Relatório para o Teams</h2>
         <input type="text" id="teamsWebhookUrl" placeholder="Cole aqui a URL do Webhook do Teams" size="50">
         <button id="sendReportBtn">Enviar Relatório</button>
+        <div id="statusMessage"></div>
     </div>
 
     <script>
@@ -45,6 +49,13 @@
         const taskList = document.getElementById('taskList');
         const teamsWebhookUrlInput = document.getElementById('teamsWebhookUrl');
         const sendReportBtn = document.getElementById('sendReportBtn');
+        const statusMessage = document.getElementById('statusMessage');
+
+        // Função para exibir mensagens de status
+        function updateStatus(message, type = 'error') {
+            statusMessage.textContent = message;
+            statusMessage.className = type; // 'success' ou 'error'
+        }
 
         // Função para adicionar uma nova tarefa à lista
         function addTask() {
@@ -85,15 +96,16 @@
 
         // Função para enviar o relatório para o Microsoft Teams
         async function sendReportToTeams() {
+            statusMessage.className = ''; // Limpa status anterior
             const webhookUrl = teamsWebhookUrlInput.value.trim();
             if (!webhookUrl.startsWith('https://')) {
-                alert('Por favor, insira uma URL de Webhook do Teams válida.');
+                updateStatus('Por favor, insira uma URL de Webhook do Teams válida.');
                 return;
             }
 
             const tasks = Array.from(taskList.querySelectorAll('li span'));
             if (tasks.length === 0) {
-                alert('Adicione pelo menos uma tarefa ao relatório antes de enviar.');
+                updateStatus('Adicione pelo menos uma tarefa ao relatório antes de enviar.');
                 return;
             }
 
@@ -122,6 +134,8 @@
                 }]
             };
 
+            console.log("Enviando o seguinte payload para o Teams:", JSON.stringify(reportPayload, null, 2));
+
             try {
                 sendReportBtn.disabled = true;
                 sendReportBtn.textContent = 'Enviando...';
@@ -135,16 +149,19 @@
                 });
 
                 if (response.ok) {
-                    alert('Relatório enviado com sucesso para o Teams!');
+                    updateStatus('Relatório enviado com sucesso para o Teams!', 'success');
                     // Opcional: limpar a lista após o envio
                     // taskList.innerHTML = ''; 
                 } else {
                     const errorText = await response.text();
-                    alert(`Falha ao enviar o relatório: ${response.status} ${response.statusText}\n\nDetalhes: ${errorText}`);
+                    const errorMessage = `Falha ao enviar o relatório: ${response.status} ${response.statusText}. Resposta do servidor: ${errorText}`;
+                    console.error(errorMessage);
+                    updateStatus(errorMessage);
                 }
             } catch (error) {
                 console.error('Erro ao enviar para o Teams:', error);
-                alert('Ocorreu um erro de rede ao tentar enviar o relatório. Verifique sua conexão e a URL do webhook.');
+                const errorMessage = 'Ocorreu um erro de rede ao tentar enviar o relatório. Verifique o console do navegador (pressione F12) para mais detalhes, sua conexão e a URL do webhook.';
+                updateStatus(errorMessage);
             } finally {
                 sendReportBtn.disabled = false;
                 sendReportBtn.textContent = 'Enviar Relatório';
