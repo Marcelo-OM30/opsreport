@@ -243,7 +243,8 @@ async function salvarRelatorio(relatorio) {
     
     // Se não tiver token configurado, salvar localmente
     if (!CONFIG.GITHUB_TOKEN || 
-        CONFIG.GITHUB_TOKEN === 'SEU_TOKEN_AQUI') {
+        CONFIG.GITHUB_TOKEN === 'SEU_TOKEN_AQUI' ||
+        CONFIG.GITHUB_TOKEN === 'SEU_NOVO_TOKEN_AQUI') {
         console.log('Salvando apenas localmente - token não configurado');
         salvarRelatorioLocal(relatorio);
         return;
