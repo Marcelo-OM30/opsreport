@@ -93,6 +93,53 @@ Se você já commitou o arquivo com um token, faça o seguinte IMEDIATAMENTE:
 4. **Verifique se está no .gitignore**:
    - O arquivo `config.js` deve estar listado no `.gitignore`
 
+## 🚨 Solução de Problemas Comuns
+
+### ❌ Erro: "Failed to load resource: config.js 404"
+
+**Problema**: O navegador não consegue carregar o arquivo `config.js`.
+
+**Soluções**:
+
+1. **Se você está acessando via `file://`** (arquivo local):
+   - ❌ Não funciona: `file:///caminho/para/index.html`
+   - ✅ Use um servidor local:
+     ```bash
+     # Opção 1: Python
+     python -m http.server 8000
+     
+     # Opção 2: Node.js
+     npx serve .
+     
+     # Opção 3: VS Code Live Server
+     # Instale a extensão "Live Server" e clique com botão direito > "Open with Live Server"
+     ```
+   - Acesse: `http://localhost:8000`
+
+2. **Se você está no GitHub Pages**:
+   - Verifique se o `config.js` está no repositório
+   - Confirme que não está no `.gitignore`
+   - Aguarde alguns minutos para o deploy
+
+3. **Verificar se o arquivo existe**:
+   ```bash
+   # No terminal, dentro da pasta do projeto:
+   ls -la config.js
+   ```
+
+4. **Criar config.js se não existir**:
+   ```bash
+   cp config.example.js config.js
+   ```
+
+### ⚠️ Sistema em Modo Local
+
+Se o `config.js` não for encontrado, o sistema automaticamente:
+- ✅ Funciona em modo local (sem sincronização GitHub)
+- ✅ Salva relatórios no navegador (localStorage)
+- ✅ Permite exportação Excel/Word
+- ❌ Não sincroniza entre dispositivos da equipe
+
 ## 🚀 Como Usar
 
 ### Preenchendo um Relatório

@@ -1,13 +1,55 @@
-// ⚙️ CONFIGURAÇÃO DO SISTEMA
+// ⚙️ EXEMPLO DE CONFIGURAÇÃO - Sistema de Relatórios de Operações
 // 
-// Este arquivo contém as configurações principais do sistema.
-// Copie e cole essas configurações no arquivo script.js para personalizar o sistema.
+// 📋 INSTRUÇÕES:
+// 1. Copie este arquivo como 'config.js'
+// 2. Configure seus dados do GitHub (opcional)
+// 3. NUNCA faça commit do config.js com token real
+//
+// 💡 MODO LOCAL: Se não configurar GitHub, funcionará apenas localmente
 
-// 🔧 CONFIGURAÇÃO DO GITHUB (Para persistência de dados)
-const GITHUB_CONFIG_EXAMPLE = {
-    owner: 'seu-usuario-github',     // 👤 Substitua pelo seu usuário do GitHub
-    repo: 'opsReport',               // 📁 Nome do repositório (mantenha como 'opsReport')
-    token: 'ghp_xxxxxxxxxxxxxxxxx'   // 🔑 Token do GitHub (veja instruções no README)
+// === CONFIGURAÇÃO PRINCIPAL ===
+const CONFIG = {
+    // 🔧 GitHub (OPCIONAL - para sincronização em equipe)
+    GITHUB_TOKEN: 'SEU_TOKEN_AQUI',        // Token do GitHub (deixe assim para modo local)
+    GITHUB_REPO: 'usuario/repositorio',     // Formato: 'owner/repo' (ex: 'joao/opsreport')
+    
+    // 👥 Equipe (opcional)
+    TEAM_MEMBERS: [
+        'Seu Nome',
+        'Colega 1',
+        'Colega 2'
+        // Adicione mais membros...
+    ],
+    
+    // ⚙️ Configurações gerais
+    APP_NAME: 'Sistema de Relatórios de Operações',
+    VERSION: '1.0.0',
+    DEBUG_MODE: true  // Para ver logs detalhados
+};
+
+// === INSTRUÇÕES DETALHADAS ===
+//
+// 🌐 PARA USAR COM GITHUB (sincronização em equipe):
+// 1. Vá em: https://github.com/settings/tokens
+// 2. Clique "Generate new token (classic)"
+// 3. Selecione permissão: ✅ repo (full control)
+// 4. Copie o token e substitua 'SEU_TOKEN_AQUI'
+// 5. Configure GITHUB_REPO com seu repositório
+//
+// 🏠 PARA USAR SÓ LOCAL (sem sincronização):
+// - Deixe GITHUB_TOKEN como 'SEU_TOKEN_AQUI'
+// - O sistema funcionará normalmente só no seu dispositivo
+//
+// � SEGURANÇA:
+// - NUNCA compartilhe seu token
+// - NUNCA faça commit do config.js com token real
+// - Use .gitignore para proteger config.js
+
+// Manter compatibilidade com código antigo
+const GITHUB_CONFIG = {
+    owner: CONFIG.GITHUB_REPO ? CONFIG.GITHUB_REPO.split('/')[0] : '',
+    repo: CONFIG.GITHUB_REPO ? CONFIG.GITHUB_REPO.split('/')[1] : '',
+    token: CONFIG.GITHUB_TOKEN
 };
 
 // 🏢 CONFIGURAÇÃO DAS PREFEITURAS

@@ -21,20 +21,38 @@ const exportWordBtn = document.getElementById('exportWord');
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', function() {
-    // Verificar se a configuração foi carregada
-    if (typeof CONFIG === 'undefined') {
-        console.error('ERRO: config.js não foi carregado ou CONFIG não está definido');
-        showToast('Erro de configuração. Verifique o arquivo config.js', 'error');
-        return;
-    }
-    
-    console.log('Configuração carregada:', {
-        hasToken: !!CONFIG.GITHUB_TOKEN,
-        repo: CONFIG.GITHUB_REPO,
-        tokenLength: CONFIG.GITHUB_TOKEN ? CONFIG.GITHUB_TOKEN.length : 0
-    });
-    
-    initializeApp();
+    // Aguardar um pouco para garantir que config.js foi carregado
+    setTimeout(() => {
+        // Verificar se a configuração foi carregada
+        if (typeof CONFIG === 'undefined') {
+            console.warn('⚠️ config.js não foi carregado. Sistema funcionará em modo local apenas.');
+            
+            // Criar configuração padrão para modo local
+            window.CONFIG = {
+                GITHUB_TOKEN: null,
+                GITHUB_REPO: null,
+                DEBUG_MODE: true,
+                TEAM_MEMBERS: ['Local User']
+            };
+            
+            // Criar GITHUB_CONFIG para compatibilidade
+            window.GITHUB_CONFIG = {
+                owner: '',
+                repo: '',
+                token: null
+            };
+            
+            showToast('⚠️ Sistema funcionando em modo local (config.js não encontrado)', 'warning');
+        } else {
+            console.log('✅ Configuração carregada:', {
+                hasToken: !!CONFIG.GITHUB_TOKEN,
+                repo: CONFIG.GITHUB_REPO,
+                tokenLength: CONFIG.GITHUB_TOKEN ? CONFIG.GITHUB_TOKEN.length : 0
+            });
+        }
+        
+        initializeApp();
+    }, 100);
 });
 
 function initializeApp() {
@@ -765,8 +783,17 @@ function createDemoReport() {
 }
 
 async function loadReportsFromGitHub() {
+    // Verificar se há configuração válida do GitHub
+    if (!CONFIG.GITHUB_REPO || CONFIG.GITHUB_REPO === 'usuario/repositorio') {
+        throw new Error('Configuração do GitHub não definida');
+    }
+    
     // Extrair owner e repo do formato 'owner/repo'
     const [owner, repo] = CONFIG.GITHUB_REPO.split('/');
+    
+    if (!owner || !repo) {
+        throw new Error('Formato de repositório inválido. Use: owner/repo');
+    }
     
     // Buscar Issues do repositório (não precisa de token para leitura de repos públicos)
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues?labels=relatório&state=all&per_page=100`);
