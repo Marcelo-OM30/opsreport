@@ -150,6 +150,10 @@
                     <i class="fas fa-info-circle"></i> Mostrando relatórios de todos os membros da equipe
                 </p>
                 <div class="export-buttons">
+                    <!-- Botão de configuração GitHub -->
+                    <button type="button" id="configGitHub" class="btn" style="background-color: #6366f1; margin-right: 10px; font-size: 12px;">
+                        <i class="fab fa-github"></i> Config
+                    </button>
                     <!-- Botão temporário para criar relatório de teste no celular -->
                     <button type="button" id="createDemoReport" class="btn" style="background-color: #10b981; margin-right: 10px; font-size: 12px;">
                         <i class="fas fa-plus"></i> Demo
@@ -172,8 +176,51 @@
 
     <div id="toast" class="toast"></div>
 
-    <!-- Configuração do GitHub (mantenha em .gitignore) -->
-    <script src="config.js"></script>
+    <!-- Modal de Configuração GitHub -->
+    <div id="configModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fab fa-github"></i> Configuração GitHub</h3>
+                <button type="button" id="closeModal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Configure o GitHub para sincronizar relatórios entre a equipe:</strong></p>
+                
+                <div class="form-group">
+                    <label for="githubToken">Token GitHub:</label>
+                    <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxxxxxxx">
+                    <small>Gere em: https://github.com/settings/tokens (permissão: repo)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="githubRepo">Repositório:</label>
+                    <input type="text" id="githubRepo" placeholder="usuario/repositorio" value="Marcelo-OM30/opsReport">
+                </div>
+                
+                <div class="form-group">
+                    <label for="teamMembers">Membros da Equipe (separados por vírgula):</label>
+                    <input type="text" id="teamMembers" placeholder="Marcelo, Bruno, Cibele" value="Marcelo, Bruno, Cibele, Patrick">
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" id="saveConfig" class="btn">
+                        <i class="fas fa-save"></i> Salvar Configuração
+                    </button>
+                    <button type="button" id="clearConfig" class="btn" style="background-color: #ef4444;">
+                        <i class="fas fa-trash"></i> Limpar
+                    </button>
+                    <button type="button" id="useLocal" class="btn" style="background-color: #6b7280;">
+                        <i class="fas fa-home"></i> Usar Modo Local
+                    </button>
+                </div>
+                
+                <div class="config-status" id="configStatus" style="margin-top: 15px; padding: 10px; border-radius: 5px; display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuração Dinâmica (funciona sem config.js) -->
+    <script src="config-dynamic.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

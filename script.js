@@ -103,6 +103,9 @@ function setupEventListeners() {
     if (demoBtn) {
         demoBtn.addEventListener('click', createDemoReport);
     }
+    
+    // Modal de configuração GitHub
+    setupConfigModal();
 }
 
 function updateCriticidadeDisplay() {
@@ -894,4 +897,156 @@ async function getAllReportsForExport() {
         // Fallback para relatórios locais
         return JSON.parse(localStorage.getItem('opsReports') || '[]');
     }
+}
+
+// === CONFIGURAÇÃO DINÂMICA DO GITHUB ===
+
+function setupConfigModal() {
+    const configBtn = document.getElementById('configGitHub');
+    const modal = document.getElementById('configModal');
+    const closeBtn = document.getElementById('closeModal');
+    const saveBtn = document.getElementById('saveConfig');
+    const clearBtn = document.getElementById('clearConfig');
+    const localBtn = document.getElementById('useLocal');
+    
+    // Abrir modal
+    if (configBtn) {
+        configBtn.addEventListener('click', () => {
+            loadCurrentConfig();
+            modal.style.display = 'flex';
+        });
+    }
+    
+    // Fechar modal
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    }
+    
+    // Fechar ao clicar fora
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+    
+    // Salvar configuração
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveGitHubConfig);
+    }
+    
+    // Limpar configuração
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            if (confirm('Tem certeza que deseja limpar a configuração do GitHub?')) {
+                clearGitHubConfig();
+            }
+        });
+    }
+    
+    // Usar modo local
+    if (localBtn) {
+        localBtn.addEventListener('click', () => {
+            clearGitHubConfig();
+        });
+    }
+}
+
+function loadCurrentConfig() {
+    const tokenInput = document.getElementById('githubToken');
+    const repoInput = document.getElementById('githubRepo');
+    const teamInput = document.getElementById('teamMembers');
+    
+    // Carregar configuração atual
+    if (CONFIG.GITHUB_TOKEN && CONFIG.GITHUB_TOKEN !== 'SEU_TOKEN_AQUI') {
+        tokenInput.value = CONFIG.GITHUB_TOKEN;
+    }
+    
+    if (CONFIG.GITHUB_REPO && CONFIG.GITHUB_REPO !== 'usuario/repositorio') {
+        repoInput.value = CONFIG.GITHUB_REPO;
+    }
+    
+    if (CONFIG.TEAM_MEMBERS && CONFIG.TEAM_MEMBERS.length > 0) {
+        teamInput.value = CONFIG.TEAM_MEMBERS.join(', ');
+    }
+    
+    // Mostrar status atual
+    showConfigStatus();
+}
+
+function saveGitHubConfig() {
+    const token = document.getElementById('githubToken').value.trim();
+    const repo = document.getElementById('githubRepo').value.trim();
+    const teamText = document.getElementById('teamMembers').value.trim();
+    const team = teamText.split(',').map(name => name.trim()).filter(name => name);
+    
+    // Validações
+    if (!token) {
+        showConfigMessage('Por favor, insira um token do GitHub.', 'error');
+        return;
+    }
+    
+    if (!repo || !repo.includes('/')) {
+        showConfigMessage('Por favor, insira um repositório no formato usuario/repo.', 'error');
+        return;
+    }
+    
+    if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+        showConfigMessage('Token parece inválido. Deve começar com ghp_ ou github_pat_', 'error');
+        return;
+    }
+    
+    // Salvar configuração
+    try {
+        if (typeof configureGitHub === 'function') {
+            configureGitHub(token, repo, team);
+        } else {
+            // Fallback para método alternativo
+            const config = { token, repo, team };
+            localStorage.setItem('opsReport_config', JSON.stringify(config));
+            showConfigMessage('Configuração salva! A página será recarregada.', 'success');
+            setTimeout(() => location.reload(), 2000);
+        }
+    } catch (error) {
+        console.error('Erro ao salvar configuração:', error);
+        showConfigMessage('Erro ao salvar configuração.', 'error');
+    }
+}
+
+function clearGitHubConfig() {
+    try {
+        if (typeof clearGitHubConfig === 'function') {
+            clearGitHubConfig();
+        } else {
+            // Fallback
+            localStorage.removeItem('opsReport_config');
+            showConfigMessage('Configuração limpa! A página será recarregada.', 'info');
+            setTimeout(() => location.reload(), 2000);
+        }
+    } catch (error) {
+        console.error('Erro ao limpar configuração:', error);
+        showConfigMessage('Erro ao limpar configuração.', 'error');
+    }
+}
+
+function showConfigStatus() {
+    const statusDiv = document.getElementById('configStatus');
+    const isConfigured = CONFIG.GITHUB_TOKEN && 
+                        CONFIG.GITHUB_TOKEN !== 'SEU_TOKEN_AQUI' &&
+                        CONFIG.GITHUB_REPO && 
+                        CONFIG.GITHUB_REPO !== 'usuario/repositorio';
+    
+    if (isConfigured) {
+        showConfigMessage(`✅ GitHub configurado: ${CONFIG.GITHUB_REPO}`, 'success');
+    } else {
+        showConfigMessage('⚠️ Modo local ativo. Configure o GitHub para sincronizar com a equipe.', 'info');
+    }
+}
+
+function showConfigMessage(message, type) {
+    const statusDiv = document.getElementById('configStatus');
+    statusDiv.innerHTML = message;
+    statusDiv.className = `config-status ${type}`;
+    statusDiv.style.display = 'block';
 }
