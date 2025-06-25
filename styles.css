@@ -519,12 +519,14 @@ body {
     color: white;
     font-weight: 500;
     transform: translateX(400px);
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease-in-out;
     z-index: 1000;
     display: flex;
     align-items: center;
     gap: 10px;
     box-shadow: var(--shadow-lg);
+    max-width: 350px;
+    word-wrap: break-word;
 }
 
 .toast.show {

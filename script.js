@@ -329,22 +329,40 @@ function renderReports(reports) {
 
 function updateExportButtons(hasReports) {
     if (exportExcelBtn && exportWordBtn) {
-        exportExcelBtn.disabled = !hasReports;
-        exportWordBtn.disabled = !hasReports;
+        // Só desabilita se não há relatórios, não após exportação
+        const shouldDisable = !hasReports;
+        
+        exportExcelBtn.disabled = shouldDisable;
+        exportWordBtn.disabled = shouldDisable;
         
         if (!hasReports) {
             exportExcelBtn.title = 'Nenhum relatório disponível para exportar';
             exportWordBtn.title = 'Nenhum relatório disponível para exportar';
+            exportExcelBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
+            exportWordBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
         } else {
             exportExcelBtn.title = 'Exportar todos os relatórios para Excel';
             exportWordBtn.title = 'Exportar todos os relatórios para Word';
+            // Só reseta o texto se não estiver processando
+            if (!exportExcelBtn.innerHTML.includes('fa-spin')) {
+                exportExcelBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
+            }
+            if (!exportWordBtn.innerHTML.includes('fa-spin')) {
+                exportWordBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
+            }
         }
     }
 }
 
 // Funções de Exportação
 function exportarExcel() {
+    const exportBtn = document.getElementById('exportExcel');
+    
     try {
+        // Indicador visual de processamento
+        exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exportando...';
+        exportBtn.disabled = true;
+        
         const relatorios = JSON.parse(localStorage.getItem('opsReports') || '[]');
         
         if (relatorios.length === 0) {
@@ -396,11 +414,23 @@ function exportarExcel() {
     } catch (error) {
         console.error('Erro ao exportar Excel:', error);
         showToast('Erro ao exportar arquivo Excel.', 'error');
+    } finally {
+        // Restaurar botão após um pequeno delay
+        setTimeout(() => {
+            exportBtn.innerHTML = '<i class="fas fa-file-excel"></i> Exportar Excel';
+            exportBtn.disabled = false;
+        }, 500);
     }
 }
 
 function exportarWord() {
+    const exportBtn = document.getElementById('exportWord');
+    
     try {
+        // Indicador visual de processamento
+        exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exportando...';
+        exportBtn.disabled = true;
+        
         const relatorios = JSON.parse(localStorage.getItem('opsReports') || '[]');
         
         if (relatorios.length === 0) {
@@ -524,11 +554,22 @@ function exportarWord() {
     } catch (error) {
         console.error('Erro ao exportar Word:', error);
         showToast('Erro ao exportar arquivo Word.', 'error');
+    } finally {
+        // Restaurar botão após um pequeno delay
+        setTimeout(() => {
+            exportBtn.innerHTML = '<i class="fas fa-file-word"></i> Exportar Word';
+            exportBtn.disabled = false;
+        }, 500);
     }
 }
 
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
+    
+    // Limpar timers anteriores
+    if (toast.hideTimer) {
+        clearTimeout(toast.hideTimer);
+    }
     
     // Remover classes anteriores
     toast.className = 'toast';
@@ -552,9 +593,10 @@ function showToast(message, type = 'success') {
     toast.innerHTML = `${icon} ${message}`;
     toast.classList.add(type, 'show');
     
-    // Remover após 4 segundos
-    setTimeout(() => {
+    // Remover após 4 segundos com referência para poder cancelar
+    toast.hideTimer = setTimeout(() => {
         toast.classList.remove('show');
+        toast.hideTimer = null;
     }, 4000);
 }
 
