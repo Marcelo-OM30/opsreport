@@ -230,3 +230,20 @@ Se encontrar problemas:
 ---
 
 **Desenvolvido com ❤️ para facilitar o acompanhamento de operações**
+
+## 📢 Integração com Microsoft Teams
+
+### **Envio Automático para Teams**
+- ✅ **Cards Formatados**: Relatórios enviados como cards visuais no Teams
+- ✅ **Cores por Criticidade**: Verde (baixa) → Vermelho (crítica)  
+- ✅ **Informações Completas**: Todos os dados do relatório organizados
+- ✅ **Links de Ação**: Botões para ver detalhes e acessar GitHub
+- ✅ **Não Intrusivo**: Falha no Teams não afeta o salvamento
+
+### **Configuração Rápida:**
+1. No Teams: Canal → ⋯ → Conectores → "Webhook de Entrada"
+2. No Sistema: Config → Seção "Microsoft Teams" → Cole a URL do webhook
+3. Ative "Habilitar envio para Teams"
+4. Teste com "Testar Teams"
+
+📖 **Documentação completa:** [TEAMS.md](./TEAMS.md)

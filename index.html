@@ -202,6 +202,19 @@
                     <input type="text" id="teamMembers" placeholder="Marcelo, Bruno, Cibele" value="Marcelo, Bruno, Cibele, Patrick">
                 </div>
                 
+                <div class="form-group" style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 15px;">
+                    <h4><i class="fab fa-microsoft"></i> Microsoft Teams (Opcional)</h4>
+                    <label for="teamsWebhook">Webhook URL do Teams:</label>
+                    <input type="url" id="teamsWebhook" placeholder="https://outlook.office.com/webhook/...">
+                    <small>Configure um Conector "Webhook de Entrada" no seu canal do Teams</small>
+                    
+                    <div style="margin-top: 10px;">
+                        <label>
+                            <input type="checkbox" id="teamsEnabled"> Habilitar envio para Teams
+                        </label>
+                    </div>
+                </div>
+                
                 <div class="modal-actions">
                     <button type="button" id="saveConfig" class="btn">
                         <i class="fas fa-save"></i> Salvar Configuração
@@ -228,6 +241,9 @@
                         </button>
                         <button type="button" onclick="criarRelatorioTeste()" class="btn" style="background-color: #f59e0b;">
                             <i class="fas fa-vial"></i> Criar Relatório Teste
+                        </button>
+                        <button type="button" onclick="testarWebhookTeams()" class="btn" style="background-color: #6366f1;">
+                            <i class="fab fa-microsoft"></i> Testar Teams
                         </button>
                     </div>
                 </div>

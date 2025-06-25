@@ -293,10 +293,31 @@ async function salvarRelatorio(relatorio) {
         // Também salvar localmente como backup
         salvarRelatorioLocal(relatorio);
         
+        // Enviar para Teams se configurado
+        if (CONFIG.TEAMS_ENABLED && CONFIG.TEAMS_CONFIG.sendOnCreate) {
+            try {
+                await enviarParaTeams(relatorio, 'novo');
+            } catch (teamsError) {
+                console.warn('Erro ao enviar para Teams (não crítico):', teamsError);
+                // Não interrompe o fluxo se o Teams falhar
+            }
+        }
+        
     } catch (error) {
         console.error('Erro ao salvar no GitHub:', error);
         // Fallback para salvamento local
         salvarRelatorioLocal(relatorio);
+        
+        // Tentar enviar para Teams mesmo com falha no GitHub
+        if (CONFIG.TEAMS_ENABLED && CONFIG.TEAMS_CONFIG.sendOnCreate) {
+            try {
+                await enviarParaTeams(relatorio, 'novo');
+                console.log('Relatório enviado para Teams apesar do erro no GitHub');
+            } catch (teamsError) {
+                console.warn('Erro ao enviar para Teams:', teamsError);
+            }
+        }
+        
         throw error; // Re-throw para mostrar o erro na UI
     }
 }
@@ -986,7 +1007,11 @@ function saveGitHubConfig() {
     const teamText = document.getElementById('teamMembers').value.trim();
     const team = teamText.split(',').map(name => name.trim()).filter(name => name);
     
-    // Validações
+    // Configuração do Teams
+    const teamsWebhook = document.getElementById('teamsWebhook').value.trim();
+    const teamsEnabled = document.getElementById('teamsEnabled').checked;
+    
+    // Validações GitHub
     if (!token) {
         showConfigMessage('Por favor, insira um token do GitHub.', 'error');
         return;
@@ -1002,17 +1027,68 @@ function saveGitHubConfig() {
         return;
     }
     
+    // Validações Teams
+    if (teamsEnabled && !teamsWebhook) {
+        showConfigMessage('Por favor, insira a URL do webhook do Teams ou desabilite a integração.', 'error');
+        return;
+    }
+    
+    if (teamsWebhook && !teamsWebhook.includes('outlook.office.com/webhook')) {
+        showConfigMessage('URL do Teams parece inválida. Deve ser um webhook do Outlook/Teams.', 'warning');
+    }
+    
     // Salvar configuração
     try {
-        if (typeof configureGitHub === 'function') {
-            configureGitHub(token, repo, team);
+        // Atualizar configuração temporária
+        CONFIG.GITHUB_TOKEN = token;
+        CONFIG.GITHUB_REPO = repo;
+        CONFIG.TEAM_MEMBERS = team;
+        CONFIG.TEAMS_WEBHOOK_URL = teamsWebhook;
+        CONFIG.TEAMS_ENABLED = teamsEnabled;
+        
+        // Atualizar GITHUB_CONFIG para compatibilidade
+        GITHUB_CONFIG.token = token;
+        GITHUB_CONFIG.owner = repo.split('/')[0];
+        GITHUB_CONFIG.repo = repo.split('/')[1];
+        
+        const config = { 
+            token, 
+            repo, 
+            team, 
+            teamsWebhook, 
+            teamsEnabled 
+        };
+        
+        localStorage.setItem('opsReport_config', JSON.stringify(config));
+        
+        let message = '✅ Configuração salva!';
+        if (teamsEnabled) {
+            message += ' GitHub + Teams configurados.';
         } else {
-            // Fallback para método alternativo
-            const config = { token, repo, team };
-            localStorage.setItem('opsReport_config', JSON.stringify(config));
-            showConfigMessage('Configuração salva! A página será recarregada.', 'success');
-            setTimeout(() => location.reload(), 2000);
+            message += ' Apenas GitHub configurado.';
         }
+        
+        showConfigMessage(message, 'success');
+        
+        // Dar instruções para salvar permanentemente
+        const saveInstructions = `
+Configuração salva temporariamente!
+
+Para salvar permanentemente, edite o config.js:
+- GITHUB_TOKEN: '${token}'
+- GITHUB_REPO: '${repo}'
+- TEAMS_WEBHOOK_URL: '${teamsWebhook}'
+- TEAMS_ENABLED: ${teamsEnabled}
+
+A configuração funcionará nesta sessão.
+        `;
+        
+        setTimeout(() => {
+            if (confirm('Deseja ver as instruções para salvar permanentemente?')) {
+                alert(saveInstructions);
+            }
+        }, 2000);
+        
     } catch (error) {
         console.error('Erro ao salvar configuração:', error);
         showConfigMessage('Erro ao salvar configuração.', 'error');
@@ -1299,5 +1375,195 @@ O token funcionará nesta sessão, mas será perdido ao recarregar a página se 
     } catch (error) {
         console.log('❌ Erro ao testar token:', error);
         showToast('Erro ao testar token', 'error');
+    }
+}
+
+// === INTEGRAÇÃO COM MICROSOFT TEAMS ===
+async function enviarParaTeams(relatorio, tipo = 'novo') {
+    if (!CONFIG.TEAMS_ENABLED || !CONFIG.TEAMS_WEBHOOK_URL) {
+        console.log('📢 Teams não configurado ou desabilitado');
+        return false;
+    }
+    
+    try {
+        console.log('📢 Enviando relatório para Teams...');
+        
+        const card = criarCardTeams(relatorio, tipo);
+        
+        const response = await fetch(CONFIG.TEAMS_WEBHOOK_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(card)
+        });
+        
+        if (response.ok) {
+            console.log('✅ Relatório enviado para Teams com sucesso');
+            showToast('📢 Relatório enviado para Teams!', 'success');
+            return true;
+        } else {
+            console.error('❌ Erro ao enviar para Teams:', response.status);
+            showToast('❌ Erro ao enviar para Teams', 'error');
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Erro na integração com Teams:', error);
+        showToast('❌ Erro na conexão com Teams', 'error');
+        return false;
+    }
+}
+
+function criarCardTeams(relatorio, tipo) {
+    const dataFormatada = new Date(relatorio.timestamp).toLocaleString('pt-BR');
+    const criticidadeColor = getCriticidadeColor(relatorio.criticidade);
+    const criticidadeText = getCriticidadeText(relatorio.criticidade);
+    
+    let titulo = '🚀 Novo Relatório de Operação';
+    let subtitulo = `${relatorio.prefeitura} - ${relatorio.opsInfo}`;
+    
+    if (tipo === 'resumo') {
+        titulo = '📊 Resumo de Operações';
+        subtitulo = `Relatórios do período`;
+    }
+    
+    const card = {
+        "@type": "MessageCard",
+        "@context": "http://schema.org/extensions",
+        "themeColor": criticidadeColor,
+        "summary": titulo,
+        "sections": [
+            {
+                "activityTitle": titulo,
+                "activitySubtitle": subtitulo,
+                "activityImage": "https://github.com/Marcelo-OM30/opsreport/raw/main/logo.png",
+                "facts": [
+                    {
+                        "name": "🏛️ Prefeitura:",
+                        "value": relatorio.prefeitura
+                    },
+                    {
+                        "name": "📋 Operação:",
+                        "value": relatorio.opsInfo
+                    },
+                    {
+                        "name": "🔧 Versão:",
+                        "value": relatorio.versaoSistema
+                    },
+                    {
+                        "name": "🌐 Ambiente:",
+                        "value": relatorio.ambiente
+                    },
+                    {
+                        "name": "⚠️ Criticidade:",
+                        "value": `${criticidadeText} (${relatorio.criticidade}/10)`
+                    },
+                    {
+                        "name": "👤 Responsável:",
+                        "value": relatorio.responsavel || 'Não informado'
+                    },
+                    {
+                        "name": "📅 Data:",
+                        "value": dataFormatada
+                    }
+                ],
+                "markdown": true
+            }
+        ]
+    };
+    
+    // Adicionar seção de tarefas se houver
+    if (relatorio.tarefas && relatorio.tarefas.length > 0) {
+        const tarefasText = relatorio.tarefas
+            .slice(0, 5) // Limitar a 5 tarefas para não sobrecarregar
+            .map((tarefa, index) => `${index + 1}. ${tarefa.texto}`)
+            .join('\n');
+        
+        card.sections.push({
+            "activityTitle": "📝 Principais Tarefas",
+            "text": tarefasText + (relatorio.tarefas.length > 5 ? `\n... e mais ${relatorio.tarefas.length - 5} tarefas` : '')
+        });
+    }
+    
+    // Adicionar conclusão
+    if (relatorio.conclusao) {
+        card.sections.push({
+            "activityTitle": "✅ Conclusão",
+            "text": relatorio.conclusao
+        });
+    }
+    
+    // Adicionar ações/botões
+    card.potentialAction = [
+        {
+            "@type": "OpenUri",
+            "name": "📊 Ver Todos os Relatórios",
+            "targets": [
+                {
+                    "os": "default",
+                    "uri": "https://marcelo-om30.github.io/opsreport/"
+                }
+            ]
+        }
+    ];
+    
+    if (CONFIG.GITHUB_REPO) {
+        card.potentialAction.push({
+            "@type": "OpenUri",
+            "name": "🔗 Ver no GitHub",
+            "targets": [
+                {
+                    "os": "default",
+                    "uri": `https://github.com/${CONFIG.GITHUB_REPO}/issues`
+                }
+            ]
+        });
+    }
+    
+    return card;
+}
+
+function getCriticidadeColor(criticidade) {
+    if (criticidade <= 3) return "#10b981"; // Verde
+    if (criticidade <= 6) return "#f59e0b"; // Amarelo
+    if (criticidade <= 8) return "#f97316"; // Laranja
+    return "#ef4444"; // Vermelho
+}
+
+function getCriticidadeText(criticidade) {
+    if (criticidade <= 3) return "🟢 Baixa";
+    if (criticidade <= 6) return "🟡 Média";
+    if (criticidade <= 8) return "🟠 Alta";
+    return "🔴 Crítica";
+}
+
+async function testarWebhookTeams() {
+    if (!CONFIG.TEAMS_WEBHOOK_URL) {
+        showToast('Configure o webhook do Teams primeiro', 'warning');
+        return;
+    }
+    
+    const relatorioTeste = {
+        id: Date.now(),
+        prefeitura: 'Teste',
+        opsInfo: 'Teste de Integração Teams',
+        versaoSistema: 'v1.0.0-test',
+        ambiente: 'Homologação',
+        criticidade: 5,
+        responsavel: 'Sistema Automático',
+        timestamp: Date.now(),
+        tarefas: [
+            { id: 1, texto: 'Teste de envio para Teams' },
+            { id: 2, texto: 'Verificar formatação do card' }
+        ],
+        conclusao: 'Este é um teste da integração com Microsoft Teams. Se você está vendo esta mensagem, a integração está funcionando!'
+    };
+    
+    const sucesso = await enviarParaTeams(relatorioTeste, 'teste');
+    
+    if (sucesso) {
+        showToast('✅ Teste enviado para Teams!', 'success');
+    } else {
+        showToast('❌ Falha no teste do Teams', 'error');
     }
 }
