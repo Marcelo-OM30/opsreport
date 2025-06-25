@@ -2,12 +2,26 @@
 
 Sistema completo para registro e acompanhamento de relatórios de deploy e operações, desenvolvido para funcionar com GitHub Pages.
 
-## 🚀 Funcionalidades
+## � **Compartilhamento em Equipe**
+
+### **Como funciona:**
+- ✅ **Todos veem todos os relatórios** - Sistema carrega automaticamente relatórios de todos os membros da equipe
+- ✅ **Salvamento inteligente** - Salva no GitHub Issues (se token configurado) + backup local
+- ✅ **Funciona sem configuração** - Carrega relatórios públicos do repositório
+- ✅ **Informações do autor** - Mostra quem criou cada relatório
+
+### **Para configuração completa (opcional):**
+1. **Gere um Personal Access Token** no GitHub com permissão `repo`
+2. **Configure o token** (veja seção de configuração abaixo)
+3. **Toda a equipe terá acesso** aos relatórios automaticamente
+
+## �🚀 Funcionalidades
 
 - ✅ **Formulário Completo**: Prefeitura, ambiente, erros, criticidade, tarefas e avaliação QA
 - 📊 **Escala de Criticidade**: De 1 a 10 com indicadores visuais
 - ✏️ **Gerenciamento de Tarefas**: Adicionar e remover tarefas dinamicamente
 - 💾 **Persistência de Dados**: Armazenamento local + integração opcional com GitHub Issues
+- 👥 **Colaboração em Equipe**: Todos os membros veem todos os relatórios
 - 📱 **Design Responsivo**: Funciona perfeitamente em desktop e móveis
 - 🎨 **Interface Moderna**: Design limpo e intuitivo
 - 📈 **Histórico de Relatórios**: Visualização dos relatórios recentes

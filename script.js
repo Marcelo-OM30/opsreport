@@ -279,22 +279,40 @@ async function loadReports() {
     try {
         loadingReports.style.display = 'block';
         
-        // Carregar relatórios locais
-        const relatoriosLocais = JSON.parse(localStorage.getItem('opsReports') || '[]');
+        let allReports = [];
         
-        if (relatoriosLocais.length === 0) {
+        // 1. Tentar carregar relatórios do GitHub (públicos para toda equipe)
+        try {
+            const githubReports = await loadReportsFromGitHub();
+            allReports = allReports.concat(githubReports);
+        } catch (error) {
+            console.log('Não foi possível carregar relatórios do GitHub:', error.message);
+        }
+        
+        // 2. Carregar relatórios locais como backup/cache
+        const localReports = JSON.parse(localStorage.getItem('opsReports') || '[]');
+        
+        // 3. Combinar e remover duplicatas (priorizar GitHub)
+        const githubIds = allReports.map(r => r.id);
+        const uniqueLocalReports = localReports.filter(r => !githubIds.includes(r.id));
+        allReports = allReports.concat(uniqueLocalReports);
+        
+        // 4. Ordenar por data (mais recentes primeiro)
+        allReports.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        if (allReports.length === 0) {
             reportsContainer.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 40px;">Nenhum relatório encontrado ainda.</p>';
-            updateExportButtons(false); // Desabilitar se não há relatórios
+            updateExportButtons(false);
             return;
         }
         
-        renderReports(relatoriosLocais);
-        updateExportButtons(true); // Habilitar se há relatórios
+        renderReports(allReports);
+        updateExportButtons(true);
         
     } catch (error) {
         console.error('Erro ao carregar relatórios:', error);
         reportsContainer.innerHTML = '<p style="text-align: center; color: var(--danger-color); padding: 40px;">Erro ao carregar relatórios.</p>';
-        updateExportButtons(false); // Desabilitar em caso de erro
+        updateExportButtons(false);
     } finally {
         loadingReports.style.display = 'none';
     }
@@ -311,6 +329,7 @@ function renderReports(reports) {
             <div class="report-header">
                 <div class="report-title">
                     ${escapeHtml(report.opsInfo || 'Ops não informada')}
+                    ${report.author ? `<small style="color: var(--text-secondary); font-weight: normal;"> • por ${report.author}</small>` : ''}
                 </div>
                 <div class="report-status status-${report.conclusao}">
                     ${report.conclusao === 'aprovado' ? '✅ Aprovado' : '❌ Recusado'}
@@ -323,7 +342,8 @@ function renderReports(reports) {
                 <div><strong>Data:</strong> ${report.timestampBR}</div>
                 <div><strong>Criticidade:</strong> ${report.criticidade}/10</div>
                 <div><strong>Tarefas:</strong> ${report.tarefas.length}</div>
-                ${report.githubUrl ? `<div><a href="${report.githubUrl}" target="_blank" style="color: var(--primary-color);">Ver no GitHub</a></div>` : ''}
+                ${report.githubUrl ? `<div><a href="${report.githubUrl}" target="_blank" style="color: var(--primary-color);"><i class="fab fa-github"></i> Ver no GitHub</a></div>` : ''}
+                ${report.githubNumber ? `<div style="color: var(--text-secondary); font-size: 12px;">Issue #${report.githubNumber}</div>` : ''}
             </div>
             ${report.erros && report.erros !== 'Nenhum erro reportado' ? 
                 `<div style="margin-top: 15px;"><strong>Erros:</strong><br><small>${escapeHtml(report.erros.substring(0, 100))}${report.erros.length > 100 ? '...' : ''}</small></div>` : 
@@ -366,7 +386,7 @@ function updateExportButtons(hasReports) {
 }
 
 // Funções de Exportação
-function exportarExcel() {
+async function exportarExcel() {
     const exportBtn = document.getElementById('exportExcel');
     
     try {
@@ -374,7 +394,7 @@ function exportarExcel() {
         exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exportando...';
         exportBtn.disabled = true;
         
-        const relatorios = JSON.parse(localStorage.getItem('opsReports') || '[]');
+        const relatorios = await getAllReportsForExport();
         
         if (relatorios.length === 0) {
             showToast('Nenhum relatório encontrado para exportar.', 'warning');
@@ -399,6 +419,7 @@ function exportarExcel() {
             'Criticidade': `${relatorio.criticidade}/10`,
             'Status': relatorio.conclusao === 'aprovado' ? 'Aprovado' : 'Recusado',
             'Tarefas': relatorio.tarefas.length,
+            'Autor': relatorio.author || 'Local',
             'Erros': relatorio.erros === 'Nenhum erro reportado' ? 'Nenhum' : relatorio.erros.substring(0, 100) + (relatorio.erros.length > 100 ? '...' : ''),
             'Avaliação QA': relatorio.avaliacaoQA === 'Não informado' ? 'Não informado' : relatorio.avaliacaoQA.substring(0, 100) + (relatorio.avaliacaoQA.length > 100 ? '...' : '')
         }));
@@ -417,6 +438,7 @@ function exportarExcel() {
             { wch: 12 }, // Criticidade
             { wch: 10 }, // Status
             { wch: 8 },  // Tarefas
+            { wch: 15 }, // Autor
             { wch: 30 }, // Erros
             { wch: 30 }  // Avaliação QA
         ];
@@ -448,7 +470,7 @@ function exportarExcel() {
     }
 }
 
-function exportarWord() {
+async function exportarWord() {
     const exportBtn = document.getElementById('exportWord');
     
     try {
@@ -456,7 +478,7 @@ function exportarWord() {
         exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exportando...';
         exportBtn.disabled = true;
         
-        const relatorios = JSON.parse(localStorage.getItem('opsReports') || '[]');
+        const relatorios = await getAllReportsForExport();
         
         if (relatorios.length === 0) {
             showToast('Nenhum relatório encontrado para exportar.', 'warning');
@@ -531,6 +553,11 @@ function exportarWord() {
                         <div class="campo">
                             <span class="label">Total de Tarefas:</span> ${relatorio.tarefas.length}
                         </div>
+                        ${relatorio.author ? `
+                        <div class="campo">
+                            <span class="label">Autor:</span> ${relatorio.author}
+                        </div>
+                        ` : ''}
                     </div>
                     
                     ${relatorio.erros !== 'Nenhum erro reportado' ? `
@@ -662,4 +689,105 @@ function limparDadosAntigos() {
 // Executar limpeza ocasionalmente
 if (Math.random() < 0.1) { // 10% de chance
     limparDadosAntigos();
+}
+
+async function loadReportsFromGitHub() {
+    // Buscar Issues do repositório (não precisa de token para leitura de repos públicos)
+    const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/issues?labels=relatório&state=all&per_page=100`);
+    
+    if (!response.ok) {
+        throw new Error(`Erro ao carregar do GitHub: ${response.status}`);
+    }
+    
+    const issues = await response.json();
+    
+    // Converter Issues para formato de relatório
+    const reports = issues.map(issue => {
+        try {
+            // Extrair dados do corpo da issue
+            const body = issue.body || '';
+            
+            // Extrair informações usando regex
+            const opsMatch = body.match(/\*\*🏷️ Ops:\*\* (.+)/);
+            const versaoMatch = body.match(/\*\*🔢 Versão:\*\* (.+)/);
+            const prefeituraMatch = body.match(/\*\*📍 Prefeitura:\*\* (.+)/);
+            const ambienteMatch = body.match(/\*\*🌐 Ambiente:\*\* (.+)/);
+            const dataMatch = body.match(/\*\*📅 Data\/Hora:\*\* (.+)/);
+            const criticidadeMatch = body.match(/\*\*⚠️ Criticidade:\*\* (\d+)\/10/);
+            const statusMatch = body.match(/\*\*✅ Status:\*\* (.+)/);
+            
+            // Extrair seções
+            const errosMatch = body.match(/### 🐛 Erros Reportados\s*\n(.+?)(?=\n###|\n---|\n\*|$)/s);
+            const tarefasMatch = body.match(/### 📝 Tarefas Executadas\s*\n(.+?)(?=\n###|\n---|\n\*|$)/s);
+            const qaMatch = body.match(/### 🔍 Avaliação QA\s*\n(.+?)(?=\n###|\n---|\n\*|$)/s);
+            
+            // Processar tarefas
+            let tarefas = [];
+            if (tarefasMatch && tarefasMatch[1] && !tarefasMatch[1].includes('Nenhuma tarefa')) {
+                const tarefasText = tarefasMatch[1].trim();
+                tarefas = tarefasText.split('\n').map((linha, index) => {
+                    const texto = linha.replace(/^\d+\.\s*/, '').trim();
+                    return {
+                        id: index + 1,
+                        texto: texto,
+                        timestamp: dataMatch ? dataMatch[1].trim() : new Date().toLocaleString('pt-BR')
+                    };
+                }).filter(t => t.texto);
+            }
+            
+            return {
+                id: `github-${issue.number}`, // ID único do GitHub
+                timestamp: issue.created_at,
+                timestampBR: new Date(issue.created_at).toLocaleString('pt-BR'),
+                prefeitura: prefeituraMatch ? prefeituraMatch[1].trim() : 'Não informada',
+                opsInfo: opsMatch ? opsMatch[1].trim() : 'Não informada',
+                versaoSistema: versaoMatch ? versaoMatch[1].trim() : 'Não informada',
+                ambiente: ambienteMatch ? ambienteMatch[1].trim() : 'Não informado',
+                erros: errosMatch ? errosMatch[1].trim() : 'Nenhum erro reportado',
+                criticidade: criticidadeMatch ? parseInt(criticidadeMatch[1]) : 5,
+                tarefas: tarefas,
+                avaliacaoQA: qaMatch ? qaMatch[1].trim() : 'Não informado',
+                conclusao: statusMatch && statusMatch[1].includes('Aprovado') ? 'aprovado' : 'recusado',
+                githubUrl: issue.html_url,
+                githubNumber: issue.number,
+                author: issue.user.login,
+                createdAt: issue.created_at
+            };
+        } catch (error) {
+            console.error('Erro ao processar issue:', issue.number, error);
+            return null;
+        }
+    }).filter(report => report !== null);
+    
+    return reports;
+}
+
+async function getAllReportsForExport() {
+    try {
+        // Carregar todos os relatórios (GitHub + local)
+        let allReports = [];
+        
+        // GitHub reports
+        try {
+            const githubReports = await loadReportsFromGitHub();
+            allReports = allReports.concat(githubReports);
+        } catch (error) {
+            console.log('GitHub reports not available for export');
+        }
+        
+        // Local reports
+        const localReports = JSON.parse(localStorage.getItem('opsReports') || '[]');
+        const githubIds = allReports.map(r => r.id);
+        const uniqueLocalReports = localReports.filter(r => !githubIds.includes(r.id));
+        allReports = allReports.concat(uniqueLocalReports);
+        
+        // Ordenar por data
+        allReports.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        return allReports;
+    } catch (error) {
+        console.error('Erro ao carregar relatórios para exportação:', error);
+        // Fallback para relatórios locais
+        return JSON.parse(localStorage.getItem('opsReports') || '[]');
+    }
 }
