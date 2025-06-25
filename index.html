@@ -7,6 +7,12 @@
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Bibliotecas para exportação -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.37.11/docxtemplater.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -138,7 +144,17 @@
         </main>
 
         <section class="reports-section">
-            <h2><i class="fas fa-history"></i> Relatórios Recentes</h2>
+            <div class="reports-header">
+                <h2><i class="fas fa-history"></i> Relatórios Recentes</h2>
+                <div class="export-buttons">
+                    <button type="button" id="exportExcel" class="btn btn-export">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </button>
+                    <button type="button" id="exportWord" class="btn btn-export">
+                        <i class="fas fa-file-word"></i> Exportar Word
+                    </button>
+                </div>
+            </div>
             <div id="reportsContainer" class="reports-container">
                 <div class="loading" id="loadingReports">
                     <i class="fas fa-spinner fa-spin"></i> Carregando relatórios...

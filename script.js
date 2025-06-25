@@ -20,6 +20,8 @@ const tarefasLista = document.getElementById('tarefasLista');
 const limparFormBtn = document.getElementById('limparForm');
 const reportsContainer = document.getElementById('reportsContainer');
 const loadingReports = document.getElementById('loadingReports');
+const exportExcelBtn = document.getElementById('exportExcel');
+const exportWordBtn = document.getElementById('exportWord');
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', function() {
@@ -30,6 +32,7 @@ function initializeApp() {
     setupEventListeners();
     updateCriticidadeDisplay();
     loadReports();
+    updateExportButtons(false); // Inicialmente desabilitados
 }
 
 function setupEventListeners() {
@@ -52,6 +55,10 @@ function setupEventListeners() {
     
     // Submit do formulário
     form.addEventListener('submit', handleFormSubmit);
+    
+    // Botões de exportação
+    exportExcelBtn.addEventListener('click', exportarExcel);
+    exportWordBtn.addEventListener('click', exportarWord);
 }
 
 function updateCriticidadeDisplay() {
@@ -176,7 +183,9 @@ async function handleFormSubmit(e) {
 
 async function salvarRelatorio(relatorio) {
     // Se não tiver token configurado, salvar localmente
-    if (!GITHUB_CONFIG.token || GITHUB_CONFIG.token === 'SEU_TOKEN_GITHUB') {
+    if (!GITHUB_CONFIG.token || 
+        GITHUB_CONFIG.token === 'SEU_TOKEN_GITHUB' || 
+        GITHUB_CONFIG.token === 'SUBSTITUA_PELO_SEU_TOKEN') {
         salvarRelatorioLocal(relatorio);
         return;
     }
@@ -274,6 +283,7 @@ async function loadReports() {
         }
         
         renderReports(relatoriosLocais);
+        updateExportButtons(relatoriosLocais.length > 0);
         
     } catch (error) {
         console.error('Erro ao carregar relatórios:', error);
@@ -315,6 +325,206 @@ function renderReports(reports) {
     `).join('');
     
     reportsContainer.innerHTML = html;
+}
+
+function updateExportButtons(hasReports) {
+    if (exportExcelBtn && exportWordBtn) {
+        exportExcelBtn.disabled = !hasReports;
+        exportWordBtn.disabled = !hasReports;
+        
+        if (!hasReports) {
+            exportExcelBtn.title = 'Nenhum relatório disponível para exportar';
+            exportWordBtn.title = 'Nenhum relatório disponível para exportar';
+        } else {
+            exportExcelBtn.title = 'Exportar todos os relatórios para Excel';
+            exportWordBtn.title = 'Exportar todos os relatórios para Word';
+        }
+    }
+}
+
+// Funções de Exportação
+function exportarExcel() {
+    try {
+        const relatorios = JSON.parse(localStorage.getItem('opsReports') || '[]');
+        
+        if (relatorios.length === 0) {
+            showToast('Nenhum relatório encontrado para exportar.', 'warning');
+            return;
+        }
+        
+        // Preparar dados para Excel
+        const dadosExcel = relatorios.map(relatorio => ({
+            'Data/Hora': relatorio.timestampBR,
+            'Nome da Ops': relatorio.opsInfo || 'Não informada',
+            'Versão': relatorio.versaoSistema || 'Não informada',
+            'Prefeitura': relatorio.prefeitura,
+            'Ambiente': relatorio.ambiente,
+            'Criticidade': `${relatorio.criticidade}/10`,
+            'Status': relatorio.conclusao === 'aprovado' ? 'Aprovado' : 'Recusado',
+            'Tarefas': relatorio.tarefas.length,
+            'Erros': relatorio.erros === 'Nenhum erro reportado' ? 'Nenhum' : relatorio.erros.substring(0, 100) + (relatorio.erros.length > 100 ? '...' : ''),
+            'Avaliação QA': relatorio.avaliacaoQA === 'Não informado' ? 'Não informado' : relatorio.avaliacaoQA.substring(0, 100) + (relatorio.avaliacaoQA.length > 100 ? '...' : '')
+        }));
+        
+        // Criar workbook
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(dadosExcel);
+        
+        // Ajustar largura das colunas
+        const columnWidths = [
+            { wch: 18 }, // Data/Hora
+            { wch: 25 }, // Nome da Ops
+            { wch: 15 }, // Versão
+            { wch: 15 }, // Prefeitura
+            { wch: 12 }, // Ambiente
+            { wch: 12 }, // Criticidade
+            { wch: 10 }, // Status
+            { wch: 8 },  // Tarefas
+            { wch: 30 }, // Erros
+            { wch: 30 }  // Avaliação QA
+        ];
+        ws['!cols'] = columnWidths;
+        
+        XLSX.utils.book_append_sheet(wb, ws, 'Relatórios');
+        
+        // Gerar arquivo
+        const nomeArquivo = `relatorios_operacoes_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, nomeArquivo);
+        
+        showToast(`Arquivo Excel exportado: ${nomeArquivo}`, 'success');
+        
+    } catch (error) {
+        console.error('Erro ao exportar Excel:', error);
+        showToast('Erro ao exportar arquivo Excel.', 'error');
+    }
+}
+
+function exportarWord() {
+    try {
+        const relatorios = JSON.parse(localStorage.getItem('opsReports') || '[]');
+        
+        if (relatorios.length === 0) {
+            showToast('Nenhum relatório encontrado para exportar.', 'warning');
+            return;
+        }
+        
+        // Gerar conteúdo HTML para Word
+        let htmlContent = `
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Relatórios de Operações</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    h1 { color: #3b82f6; text-align: center; }
+                    .relatorio { border: 1px solid #ddd; margin: 20px 0; padding: 15px; border-radius: 5px; }
+                    .header { background: #f8f9fa; padding: 10px; margin: -15px -15px 15px -15px; }
+                    .titulo { font-size: 18px; font-weight: bold; color: #333; }
+                    .status-aprovado { color: #10b981; }
+                    .status-recusado { color: #ef4444; }
+                    .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+                    .campo { margin: 5px 0; }
+                    .label { font-weight: bold; }
+                    .tarefas { margin: 10px 0; }
+                    .tarefa-item { margin: 5px 0; padding-left: 20px; }
+                </style>
+            </head>
+            <body>
+                <h1>📋 Relatórios de Operações</h1>
+                <p><strong>Data de Exportação:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+                <p><strong>Total de Relatórios:</strong> ${relatorios.length}</p>
+                <hr>
+        `;
+        
+        relatorios.forEach((relatorio, index) => {
+            const criticidadeLabel = relatorio.criticidade <= 3 ? 'Baixa' : 
+                                   relatorio.criticidade <= 6 ? 'Média' : 'Alta';
+            
+            htmlContent += `
+                <div class="relatorio">
+                    <div class="header">
+                        <div class="titulo">${relatorio.opsInfo || 'Ops não informada'}</div>
+                        <div class="status-${relatorio.conclusao}">
+                            ${relatorio.conclusao === 'aprovado' ? '✅ Aprovado' : '❌ Recusado'}
+                        </div>
+                    </div>
+                    
+                    <div class="meta">
+                        <div class="campo">
+                            <span class="label">Versão:</span> ${relatorio.versaoSistema || 'Não informada'}
+                        </div>
+                        <div class="campo">
+                            <span class="label">Prefeitura:</span> ${relatorio.prefeitura}
+                        </div>
+                        <div class="campo">
+                            <span class="label">Ambiente:</span> ${relatorio.ambiente}
+                        </div>
+                        <div class="campo">
+                            <span class="label">Data:</span> ${relatorio.timestampBR}
+                        </div>
+                        <div class="campo">
+                            <span class="label">Criticidade:</span> ${relatorio.criticidade}/10 (${criticidadeLabel})
+                        </div>
+                        <div class="campo">
+                            <span class="label">Total de Tarefas:</span> ${relatorio.tarefas.length}
+                        </div>
+                    </div>
+                    
+                    ${relatorio.erros !== 'Nenhum erro reportado' ? `
+                        <div class="campo">
+                            <span class="label">Erros Reportados:</span><br>
+                            ${relatorio.erros}
+                        </div>
+                    ` : ''}
+                    
+                    ${relatorio.tarefas.length > 0 ? `
+                        <div class="tarefas">
+                            <span class="label">Tarefas Executadas:</span>
+                            ${relatorio.tarefas.map((tarefa, i) => `
+                                <div class="tarefa-item">${i + 1}. ${tarefa.texto}</div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    
+                    ${relatorio.avaliacaoQA !== 'Não informado' ? `
+                        <div class="campo">
+                            <span class="label">Avaliação QA:</span><br>
+                            ${relatorio.avaliacaoQA}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        });
+        
+        htmlContent += `
+            </body>
+            </html>
+        `;
+        
+        // Criar blob e fazer download
+        const blob = new Blob([htmlContent], { type: 'application/msword' });
+        const nomeArquivo = `relatorios_operacoes_${new Date().toISOString().split('T')[0]}.doc`;
+        
+        if (window.saveAs) {
+            saveAs(blob, nomeArquivo);
+        } else {
+            // Fallback para navegadores sem FileSaver
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nomeArquivo;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        showToast(`Arquivo Word exportado: ${nomeArquivo}`, 'success');
+        
+    } catch (error) {
+        console.error('Erro ao exportar Word:', error);
+        showToast('Erro ao exportar arquivo Word.', 'error');
+    }
 }
 
 function showToast(message, type = 'success') {

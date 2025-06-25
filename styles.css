@@ -383,18 +383,65 @@ body {
     padding: 40px;
 }
 
+.reports-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
 .reports-section h2 {
     font-size: 1.5rem;
     font-weight: 600;
-    margin-bottom: 30px;
     color: var(--text-primary);
     display: flex;
     align-items: center;
     gap: 10px;
+    margin: 0;
 }
 
 .reports-section h2 i {
     color: var(--primary-color);
+}
+
+.export-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btn-export {
+    background: var(--success-color);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.btn-export:hover {
+    background: #059669;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+.btn-export:disabled {
+    background: var(--secondary-color);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-export i {
+    font-size: 1rem;
 }
 
 .reports-container {
@@ -516,6 +563,16 @@ body {
     
     .reports-section {
         padding: 20px;
+    }
+    
+    .reports-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .export-buttons {
+        justify-content: center;
     }
     
     .form-actions {
