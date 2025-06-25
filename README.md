@@ -71,7 +71,29 @@ Para salvar os dados no GitHub Issues (recomendado para persistência):
 - O token deve ser configurado apenas **APÓS** fazer o push para o GitHub
 - Para projetos em produção, considere usar GitHub Actions Secrets ou variáveis de ambiente
 
-## 📖 Como Usar
+## ⚠️ AVISO DE SEGURANÇA IMPORTANTE
+
+**NUNCA faça commit do arquivo `config.js` com um token real do GitHub!**
+
+Se você já commitou o arquivo com um token, faça o seguinte IMEDIATAMENTE:
+
+1. **Revogue o token imediatamente**:
+   - Vá em https://github.com/settings/tokens
+   - Encontre o token e clique em **Delete**
+
+2. **Gere um novo token**:
+   - Clique em **Generate new token (classic)**
+   - Configure as permissões necessárias
+   - Copie o novo token
+
+3. **Configure o novo token localmente**:
+   - Edite `config.js` com o novo token
+   - NUNCA faça commit deste arquivo
+
+4. **Verifique se está no .gitignore**:
+   - O arquivo `config.js` deve estar listado no `.gitignore`
+
+## 🚀 Como Usar
 
 ### Preenchendo um Relatório
 

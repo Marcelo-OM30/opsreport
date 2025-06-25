@@ -22,17 +22,16 @@ const exportWordBtn = document.getElementById('exportWord');
 // Inicialização
 document.addEventListener('DOMContentLoaded', function() {
     // Verificar se a configuração foi carregada
-    if (typeof GITHUB_CONFIG === 'undefined') {
-        console.error('ERRO: config.js não foi carregado ou GITHUB_CONFIG não está definido');
+    if (typeof CONFIG === 'undefined') {
+        console.error('ERRO: config.js não foi carregado ou CONFIG não está definido');
         showToast('Erro de configuração. Verifique o arquivo config.js', 'error');
         return;
     }
     
     console.log('Configuração carregada:', {
-        owner: GITHUB_CONFIG.owner,
-        repo: GITHUB_CONFIG.repo,
-        hasToken: !!GITHUB_CONFIG.token,
-        tokenLength: GITHUB_CONFIG.token ? GITHUB_CONFIG.token.length : 0
+        hasToken: !!CONFIG.GITHUB_TOKEN,
+        repo: CONFIG.GITHUB_REPO,
+        tokenLength: CONFIG.GITHUB_TOKEN ? CONFIG.GITHUB_TOKEN.length : 0
     });
     
     initializeApp();
@@ -222,12 +221,11 @@ async function handleFormSubmit(e) {
 
 async function salvarRelatorio(relatorio) {
     console.log('Tentando salvar relatório...', relatorio);
-    console.log('Token configurado:', GITHUB_CONFIG.token ? 'Sim' : 'Não');
+    console.log('Token configurado:', CONFIG.GITHUB_TOKEN ? 'Sim' : 'Não');
     
     // Se não tiver token configurado, salvar localmente
-    if (!GITHUB_CONFIG.token || 
-        GITHUB_CONFIG.token === 'SEU_TOKEN_GITHUB' || 
-        GITHUB_CONFIG.token === 'SUBSTITUA_PELO_SEU_TOKEN') {
+    if (!CONFIG.GITHUB_TOKEN || 
+        CONFIG.GITHUB_TOKEN === 'SEU_TOKEN_AQUI') {
         console.log('Salvando apenas localmente - token não configurado');
         salvarRelatorioLocal(relatorio);
         return;
@@ -235,11 +233,14 @@ async function salvarRelatorio(relatorio) {
     
     try {
         console.log('Tentando salvar no GitHub...');
+        // Extrair owner e repo do formato 'owner/repo'
+        const [owner, repo] = CONFIG.GITHUB_REPO.split('/');
+        
         // Criar issue no GitHub
-        const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/issues`, {
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`, {
             method: 'POST',
             headers: {
-                'Authorization': `token ${GITHUB_CONFIG.token}`,
+                'Authorization': `token ${CONFIG.GITHUB_TOKEN}`,
                 'Accept': 'application/vnd.github.v3+json',
                 'Content-Type': 'application/json'
             },
@@ -764,8 +765,11 @@ function createDemoReport() {
 }
 
 async function loadReportsFromGitHub() {
+    // Extrair owner e repo do formato 'owner/repo'
+    const [owner, repo] = CONFIG.GITHUB_REPO.split('/');
+    
     // Buscar Issues do repositório (não precisa de token para leitura de repos públicos)
-    const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/issues?labels=relatório&state=all&per_page=100`);
+    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues?labels=relatório&state=all&per_page=100`);
     
     if (!response.ok) {
         throw new Error(`Erro ao carregar do GitHub: ${response.status}`);
