@@ -104,30 +104,46 @@ Cada card terá botões para:
 
 ### 7. Solução de Problemas
 
+**"Sucesso mas não aparece no Teams":**
+- ✅ Use o botão "Diagnosticar Teams" para análise detalhada
+- ✅ No Power Automate: verifique se o fluxo está "Ativado"
+- ✅ Verifique se selecionou a equipe e canal corretos
+- ✅ Aguarde até 30 segundos - Power Automate pode ter delay
+- ✅ Confira o histórico de execução no Power Automate
+
 **"Não encontro a opção Conectores":**
 - ✅ Use "Fluxos de trabalho" ou Power Automate (métodos atualizados)
 - ✅ A Microsoft descontinuou conectores clássicos em muitas versões
 
-**Erro ao enviar para Teams:**
-- ✅ Verifique se a URL do webhook está correta
-- ✅ Para Power Automate: URL deve conter `logic.azure.com`
-- ✅ Para Fluxos de trabalho: URL deve conter `prod-`
-- ✅ Teste a URL diretamente com o botão "Testar Teams"
+**Erro 400 (Bad Request):**
+- ✅ Verifique se o formato da mensagem está correto
+- ✅ Para Power Automate: certifique-se que configurou para receber JSON
+- ✅ Teste com mensagem simples primeiro
 
-**Card não aparece ou aparece como texto simples:**
-- ✅ Webhooks modernos (Power Automate) mostram texto formatado
-- ✅ Webhooks clássicos mostram cards visuais
-- ✅ Ambos são funcionais, apenas diferem na apresentação
+**Erro 404 (Not Found):**
+- ✅ Webhook foi removido ou URL está incorreta
+- ✅ Reconfigure o fluxo no Teams/Power Automate
+- ✅ Copie a URL novamente
 
-**Não está enviando automaticamente:**
-- ✅ Confirme que `TEAMS_ENABLED: true`
-- ✅ Verifique se `sendOnCreate: true` no TEAMS_CONFIG
-- ✅ Teste criando um relatório de teste primeiro
+**Erro 403 (Forbidden):**
+- ✅ Permissões insuficientes no fluxo
+- ✅ Verifique se o fluxo tem acesso ao canal
+- ✅ Recrie o fluxo com permissões corretas
 
-**Power Automate não está funcionando:**
-- ✅ Verifique se o fluxo está "Ativado"
-- ✅ Confira se o canal correto foi selecionado
-- ✅ Teste enviando um POST manual para a URL
+**Power Automate específico:**
+- ✅ Acesse [https://make.powerautomate.com](https://make.powerautomate.com)
+- ✅ Vá em "Meus fluxos" → encontre seu fluxo
+- ✅ Verifique se está "Ativado" (toggle verde)
+- ✅ Clique no fluxo → "Histórico de execução" para ver logs
+- ✅ Se houver erro, ajuste a configuração da ação do Teams
+
+**Teste manual do webhook:**
+```bash
+# Teste via curl (substitua SUA_URL):
+curl -X POST "SUA_URL" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Teste manual do webhook"}'
+```
 
 ### 8. Segurança
 
