@@ -1055,3 +1055,249 @@ function showConfigMessage(message, type) {
     statusDiv.className = `config-status ${type}`;
     statusDiv.style.display = 'block';
 }
+
+// === FUNÇÕES DE DIAGNÓSTICO AVANÇADO ===
+async function diagnosticoCompleto() {
+    console.log('🔍 === DIAGNÓSTICO COMPLETO DO SISTEMA ===');
+    
+    // 1. Verificar configuração
+    console.log('1️⃣ Verificando configuração...');
+    console.log('CONFIG:', {
+        hasToken: !!CONFIG.GITHUB_TOKEN,
+        tokenLength: CONFIG.GITHUB_TOKEN ? CONFIG.GITHUB_TOKEN.length : 0,
+        tokenPrefix: CONFIG.GITHUB_TOKEN ? CONFIG.GITHUB_TOKEN.substring(0, 4) + '...' : 'N/A',
+        repo: CONFIG.GITHUB_REPO,
+        debugMode: CONFIG.DEBUG_MODE
+    });
+    
+    if (!CONFIG.GITHUB_TOKEN || CONFIG.GITHUB_TOKEN === 'SEU_TOKEN_AQUI') {
+        console.log('❌ Token não configurado');
+        showToast('Token GitHub não configurado', 'error');
+        return;
+    }
+    
+    // 2. Testar autenticação básica
+    console.log('2️⃣ Testando autenticação...');
+    try {
+        const userResponse = await fetch('https://api.github.com/user', {
+            headers: {
+                'Authorization': `token ${CONFIG.GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'opsReport-v1.0'
+            }
+        });
+        
+        if (userResponse.ok) {
+            const userData = await userResponse.json();
+            console.log('✅ Autenticação OK:', userData.login);
+            showToast(`Autenticado como: ${userData.login}`, 'success');
+        } else {
+            const errorData = await userResponse.text();
+            console.log('❌ Erro de autenticação:', userResponse.status, errorData);
+            showToast(`Erro de autenticação: ${userResponse.status}`, 'error');
+            return;
+        }
+    } catch (error) {
+        console.log('❌ Erro de rede:', error);
+        showToast('Erro de rede ao testar autenticação', 'error');
+        return;
+    }
+    
+    // 3. Testar acesso ao repositório
+    console.log('3️⃣ Testando acesso ao repositório...');
+    try {
+        const [owner, repo] = CONFIG.GITHUB_REPO.split('/');
+        const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+            headers: {
+                'Authorization': `token ${CONFIG.GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'opsReport-v1.0'
+            }
+        });
+        
+        if (repoResponse.ok) {
+            const repoData = await repoResponse.json();
+            console.log('✅ Repositório acessível:', repoData.full_name);
+            showToast(`Repositório OK: ${repoData.full_name}`, 'success');
+        } else {
+            const errorData = await repoResponse.text();
+            console.log('❌ Erro de acesso ao repositório:', repoResponse.status, errorData);
+            showToast(`Erro no repositório: ${repoResponse.status}`, 'error');
+            return;
+        }
+    } catch (error) {
+        console.log('❌ Erro ao acessar repositório:', error);
+        showToast('Erro ao acessar repositório', 'error');
+        return;
+    }
+    
+    // 4. Testar criação de issue (simulação)
+    console.log('4️⃣ Testando permissões de escrita...');
+    try {
+        const [owner, repo] = CONFIG.GITHUB_REPO.split('/');
+        const testResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `token ${CONFIG.GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json',
+                'User-Agent': 'opsReport-v1.0'
+            },
+            body: JSON.stringify({
+                title: '[TESTE] Diagnóstico do Sistema - ' + new Date().toLocaleString(),
+                body: 'Este é um teste automático do sistema de relatórios. Issue criada pelo diagnóstico.',
+                labels: ['teste', 'sistema']
+            })
+        });
+        
+        if (testResponse.ok) {
+            const issueData = await testResponse.json();
+            console.log('✅ Permissão de escrita OK - Issue criada:', issueData.number);
+            showToast(`Teste OK - Issue #${issueData.number} criada`, 'success');
+        } else {
+            const errorData = await testResponse.text();
+            console.log('❌ Erro de permissão:', testResponse.status, errorData);
+            showToast(`Erro de permissão: ${testResponse.status}`, 'error');
+        }
+    } catch (error) {
+        console.log('❌ Erro ao testar permissões:', error);
+        showToast('Erro ao testar permissões de escrita', 'error');
+    }
+    
+    console.log('🔍 === DIAGNÓSTICO COMPLETO ===');
+}
+
+async function testarNovoToken() {
+    const novoToken = prompt('Cole o novo token do GitHub:');
+    if (!novoToken) return;
+    
+    console.log('🔍 Testando novo token...');
+    
+    try {
+        const response = await fetch('https://api.github.com/user', {
+            headers: {
+                'Authorization': `token ${novoToken}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'opsReport-v1.0'
+            }
+        });
+        
+        if (response.ok) {
+            const userData = await response.json();
+            console.log('✅ Novo token válido para:', userData.login);
+            showToast(`Token válido para: ${userData.login}`, 'success');
+            
+            if (confirm('Token válido! Deseja salvar esta configuração?')) {
+                // Atualizar configuração temporariamente
+                CONFIG.GITHUB_TOKEN = novoToken;
+                showToast('Token atualizado temporariamente. Atualize o config.js para salvar permanentemente.', 'info');
+            }
+        } else {
+            const errorData = await response.text();
+            console.log('❌ Token inválido:', response.status, errorData);
+            showToast(`Token inválido: ${response.status}`, 'error');
+        }
+    } catch (error) {
+        console.log('❌ Erro ao testar token:', error);
+        showToast('Erro ao testar token', 'error');
+    }
+}
+
+async function configurarNovoToken() {
+    console.log('🔧 === CONFIGURAÇÃO DE NOVO TOKEN ===');
+    
+    const instructions = `
+Para configurar um novo token GitHub:
+
+1. Acesse: https://github.com/settings/tokens
+2. Clique em "Generate new token (classic)"
+3. Configure:
+   - Note: "Sistema de Relatórios OM30"
+   - Expiration: 90 days
+   - Scopes: ✅ repo (Full control)
+4. Copie o token gerado
+5. Cole no próximo prompt
+
+⚠️ O token deve começar com "ghp_"
+`;
+    
+    alert(instructions);
+    
+    const novoToken = prompt('Cole aqui o token GitHub:');
+    if (!novoToken) {
+        showToast('Configuração cancelada', 'info');
+        return;
+    }
+    
+    if (!novoToken.startsWith('ghp_')) {
+        showToast('Token inválido! Deve começar com "ghp_"', 'error');
+        return;
+    }
+    
+    // Testar o token
+    try {
+        showToast('Testando token...', 'info');
+        
+        const response = await fetch('https://api.github.com/user', {
+            headers: {
+                'Authorization': `token ${novoToken}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'opsReport-v1.0'
+            }
+        });
+        
+        if (response.ok) {
+            const userData = await response.json();
+            console.log('✅ Token válido para usuário:', userData.login);
+            
+            // Testar acesso ao repositório
+            const repoResponse = await fetch('https://api.github.com/repos/Marcelo-OM30/opsreport', {
+                headers: {
+                    'Authorization': `token ${novoToken}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'User-Agent': 'opsReport-v1.0'
+                }
+            });
+            
+            if (repoResponse.ok) {
+                // Atualizar configuração temporariamente
+                CONFIG.GITHUB_TOKEN = novoToken;
+                GITHUB_CONFIG.token = novoToken;
+                
+                showToast(`✅ Token configurado para: ${userData.login}`, 'success');
+                
+                // Dar instruções para salvar permanentemente
+                const saveInstructions = `
+Token configurado temporariamente!
+
+Para salvar permanentemente:
+1. Abra o arquivo config.js
+2. Substitua a linha:
+   GITHUB_TOKEN: null,
+   
+   Por:
+   GITHUB_TOKEN: '${novoToken}',
+
+3. Salve o arquivo
+
+O token funcionará nesta sessão, mas será perdido ao recarregar a página se não salvar no config.js.
+`;
+                alert(saveInstructions);
+                
+                // Recarregar relatórios
+                await loadReports();
+                
+            } else {
+                showToast('Token válido, mas sem acesso ao repositório', 'warning');
+            }
+            
+        } else {
+            const errorData = await response.text();
+            console.log('❌ Token inválido:', response.status, errorData);
+            showToast(`Token inválido: ${response.status}`, 'error');
+        }
+    } catch (error) {
+        console.log('❌ Erro ao testar token:', error);
+        showToast('Erro ao testar token', 'error');
+    }
+}

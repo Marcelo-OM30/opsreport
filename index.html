@@ -214,6 +214,24 @@
                     </button>
                 </div>
                 
+                <div class="diagnostic-section" style="margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 15px;">
+                    <h4><i class="fas fa-stethoscope"></i> Diagnóstico</h4>
+                    <div class="diagnostic-actions">
+                        <button type="button" onclick="configurarNovoToken()" class="btn" style="background-color: #059669;">
+                            <i class="fas fa-plus-circle"></i> Configurar Token
+                        </button>
+                        <button type="button" onclick="diagnosticoCompleto()" class="btn" style="background-color: #3b82f6;">
+                            <i class="fas fa-search"></i> Diagnóstico Completo
+                        </button>
+                        <button type="button" onclick="testarNovoToken()" class="btn" style="background-color: #10b981;">
+                            <i class="fas fa-key"></i> Testar Token
+                        </button>
+                        <button type="button" onclick="criarRelatorioTeste()" class="btn" style="background-color: #f59e0b;">
+                            <i class="fas fa-vial"></i> Criar Relatório Teste
+                        </button>
+                    </div>
+                </div>
+                
                 <div class="config-status" id="configStatus" style="margin-top: 15px; padding: 10px; border-radius: 5px; display: none;"></div>
             </div>
         </div>

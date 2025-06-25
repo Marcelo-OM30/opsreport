@@ -659,6 +659,40 @@ body {
     border: 1px solid #3b82f6;
 }
 
+/* === SEÇÃO DE DIAGNÓSTICO === */
+.diagnostic-section {
+    background-color: var(--card-background);
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.diagnostic-section h4 {
+    margin: 0 0 10px 0;
+    color: var(--text-primary);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.diagnostic-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.diagnostic-actions .btn {
+    font-size: 14px;
+    padding: 8px 12px;
+    flex: 1;
+    min-width: 140px;
+}
+
+.diagnostic-actions .btn i {
+    margin-right: 5px;
+}
+
+/* === MELHORIAS NO MODAL === */
+
 @media (max-width: 768px) {
     .container {
         padding: 10px;
