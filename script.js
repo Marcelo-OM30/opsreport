@@ -1,9 +1,5 @@
-// Configuração do GitHub (você precisará configurar estas variáveis)
-const GITHUB_CONFIG = {
-    owner: 'Marcelo-OM30', // Seu usuário do GitHub
-    repo: 'opsReport', // Nome do repositório
-    token: 'SUBSTITUA_PELO_SEU_TOKEN' // Configure após o deploy
-};
+// A configuração do GitHub agora está no arquivo config.js
+// Certifique-se de que o config.js está carregado antes deste script
 
 // Estado da aplicação
 let tarefas = [];
@@ -64,6 +60,18 @@ function setupEventListeners() {
     // Botões de exportação
     exportExcelBtn.addEventListener('click', exportarExcel);
     exportWordBtn.addEventListener('click', exportarWord);
+    
+    // Botão demo temporário
+    const createDemoBtn = document.getElementById('createDemoReport');
+    if (createDemoBtn) {
+        createDemoBtn.addEventListener('click', createDemoReport);
+    }
+    
+    // Botão demo temporário
+    const demoBtn = document.getElementById('createDemoReport');
+    if (demoBtn) {
+        demoBtn.addEventListener('click', createDemoReport);
+    }
 }
 
 function updateCriticidadeDisplay() {
@@ -339,12 +347,6 @@ function renderReports(reports) {
                 <div><strong>Versão:</strong> ${escapeHtml(report.versaoSistema || 'Não informada')}</div>
                 <div><strong>Prefeitura:</strong> ${escapeHtml(report.prefeitura)}</div>
                 <div><strong>Ambiente:</strong> ${escapeHtml(report.ambiente)}</div>
-                <div><strong>Data:</strong> ${report.timestampBR}</div>
-                <div><strong>Criticidade:</strong> ${report.criticidade}/10</div>
-                <div><strong>Tarefas:</strong> ${report.tarefas.length}</div>
-                ${report.githubUrl ? `<div><a href="${report.githubUrl}" target="_blank" style="color: var(--primary-color);"><i class="fab fa-github"></i> Ver no GitHub</a></div>` : ''}
-                ${report.githubNumber ? `<div style="color: var(--text-secondary); font-size: 12px;">Issue #${report.githubNumber}</div>` : ''}
-            </div>
             ${report.erros && report.erros !== 'Nenhum erro reportado' ? 
                 `<div style="margin-top: 15px;"><strong>Erros:</strong><br><small>${escapeHtml(report.erros.substring(0, 100))}${report.erros.length > 100 ? '...' : ''}</small></div>` : 
                 ''}
@@ -689,6 +691,32 @@ function limparDadosAntigos() {
 // Executar limpeza ocasionalmente
 if (Math.random() < 0.1) { // 10% de chance
     limparDadosAntigos();
+}
+
+// Função para criar relatório de demonstração (temporária)
+function createDemoReport() {
+    const demoReport = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        timestampBR: new Date().toLocaleString('pt-BR'),
+        prefeitura: ['jahu', 'caieiras', 'cotia', 'aruja'][Math.floor(Math.random() * 4)],
+        opsInfo: `OPS-${String(Math.floor(Math.random() * 100)).padStart(3, '0')}-DEMO`,
+        versaoSistema: `v${Math.floor(Math.random() * 3) + 1}.${Math.floor(Math.random() * 10)}.${Math.floor(Math.random() * 10)}`,
+        ambiente: Math.random() > 0.5 ? 'producao' : 'homologacao',
+        erros: Math.random() > 0.7 ? 'Nenhum erro reportado' : 'Erro de demonstração encontrado durante o deploy',
+        criticidade: Math.floor(Math.random() * 10) + 1,
+        tarefas: [
+            { id: 1, texto: 'Deploy da aplicação', timestamp: new Date().toLocaleString('pt-BR') },
+            { id: 2, texto: 'Verificação de logs', timestamp: new Date().toLocaleString('pt-BR') },
+            { id: 3, texto: 'Teste de funcionalidades', timestamp: new Date().toLocaleString('pt-BR') }
+        ],
+        avaliacaoQA: 'Relatório de demonstração criado automaticamente',
+        conclusao: Math.random() > 0.3 ? 'aprovado' : 'recusado'
+    };
+    
+    salvarRelatorioLocal(demoReport);
+    loadReports();
+    showToast('Relatório de demonstração criado!', 'success');
 }
 
 async function loadReportsFromGitHub() {

@@ -1,4 +1,5 @@
 # Arquivos sensíveis - NÃO fazer commit!
+config.js
 *.token
 *.env
 .env
