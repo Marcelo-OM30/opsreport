@@ -1425,9 +1425,7 @@ async function enviarParaTeams(relatorio, tipo = 'novo') {
     console.log('🔍 === TENTATIVA DE ENVIO PARA TEAMS ===');
     console.log('TEAMS_ENABLED:', window.CONFIG.TEAMS_ENABLED);
     console.log('TEAMS_WEBHOOK_URL:', window.CONFIG.TEAMS_WEBHOOK_URL ? 'Configurado' : 'Não configurado');
-    console.log('TEAMS_CONFIG exists:', !!window.CONFIG.TEAMS_CONFIG);
     console.log('sendOnCreate:', window.CONFIG.TEAMS_CONFIG?.sendOnCreate);
-    console.log('Full TEAMS_CONFIG:', JSON.stringify(window.CONFIG.TEAMS_CONFIG, null, 2));
     
     if (!window.CONFIG.TEAMS_ENABLED || !window.CONFIG.TEAMS_WEBHOOK_URL) {
         console.log('📢 Teams não configurado ou desabilitado');
@@ -1439,10 +1437,8 @@ async function enviarParaTeams(relatorio, tipo = 'novo') {
     try {
         console.log('📢 Enviando relatório para Teams...');
         console.log('Relatório:', relatorio.prefeitura, '-', relatorio.opsInfo);
-        console.log('URL webhook (primeiros 50 chars):', window.CONFIG.TEAMS_WEBHOOK_URL.substring(0, 50) + '...');
         
         const card = criarCardTeams(relatorio, tipo);
-        console.log('Card criado:', JSON.stringify(card, null, 2));
         
         const response = await fetch(window.CONFIG.TEAMS_WEBHOOK_URL, {
             method: 'POST',
@@ -1452,25 +1448,17 @@ async function enviarParaTeams(relatorio, tipo = 'novo') {
             body: JSON.stringify(card)
         });
         
-        console.log('Response status:', response.status);
-        console.log('Response statusText:', response.statusText);
-        console.log('Response headers:', [...response.headers.entries()]);
-        
         if (response.ok) {
-            const responseText = await response.text();
             console.log('✅ Relatório enviado para Teams com sucesso');
-            console.log('Response body:', responseText);
             showToast('📢 Relatório enviado para Teams!', 'success');
             return true;
         } else {
-            const errorText = await response.text();
-            console.error('❌ Erro ao enviar para Teams:', response.status, errorText);
+            console.error('❌ Erro ao enviar para Teams:', response.status);
             showToast('❌ Erro ao enviar para Teams', 'error');
             return false;
         }
     } catch (error) {
         console.error('❌ Erro na integração com Teams:', error);
-        console.error('Error stack:', error.stack);
         showToast('❌ Erro na conexão com Teams', 'error');
         return false;
     }
@@ -1838,6 +1826,18 @@ function validarWebhookTeams(url) {
             'outlook.office365.com', 
             'prod-',  // Para URLs do Power Automate que começam com prod-
             'logic.azure.com',
+            'flow.microsoft.com'
+        ];
+        
+        const ehDominioValido = dominiosValidos.some(dominio => 
+            urlObj.hostname.includes(dominio) || url.includes(dominio)
+        );
+        
+        if (!ehDominioValido) {
+            return { 
+                valido: false, 
+                erro: 'URL não parece ser um webhook do Teams/Power Automate',
+                sugestao: 'Verifique se a URL contém outlook.office.com ou logic.azure.com'
             };
         }
         
